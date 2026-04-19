@@ -1,0 +1,22 @@
+[gd_scene format=3 uid="uid://bpkmnpl002"]
+
+[ext_resource type="Script" path="res://scripts/overworld/player.gd" id="1_player"]
+[ext_resource type="SpriteFrames" path="res://scenes/overworld/PlayerFrames.tres" id="2_frames"]
+
+[node name="Player" type="Node2D"]
+script = ExtResource("1_player")
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
+sprite_frames = ExtResource("2_frames")
+animation = &"idle_down"
+frame = 0
+centered = true
+
+[node name="Camera2D" type="Camera2D" parent="."]
+; Child of Player — follows automatically.
+position_smoothing_enabled = false
+; Limit so the camera never shows past the hedge.
+limit_left = 0
+limit_top = 0
+limit_right = 320   ; 20 tiles * 16
+limit_bottom = 240  ; 15 tiles * 16
