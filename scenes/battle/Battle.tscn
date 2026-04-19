@@ -1,0 +1,239 @@
+[gd_scene load_steps=6 format=3 uid="uid://bpkmnbt001"]
+
+[ext_resource type="Script" path="res://scripts/battle/battle.gd" id="1_battle"]
+
+; Reusable styles ----------------------------------------------------------
+[sub_resource type="StyleBoxFlat" id="sb_box"]
+bg_color = Color(0.12, 0.12, 0.18, 0.95)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[sub_resource type="StyleBoxFlat" id="sb_button"]
+bg_color = Color(0.22, 0.34, 0.62, 0.95)
+corner_radius_top_left = 2
+corner_radius_top_right = 2
+corner_radius_bottom_right = 2
+corner_radius_bottom_left = 2
+
+[sub_resource type="StyleBoxFlat" id="sb_cursor"]
+bg_color = Color(0, 0, 0, 0)
+border_color = Color(0.98, 0.80, 0.20, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[sub_resource type="StyleBoxFlat" id="sb_hpbar_bg"]
+bg_color = Color(0.25, 0.28, 0.18, 1)
+corner_radius_top_left = 1
+corner_radius_top_right = 1
+corner_radius_bottom_right = 1
+corner_radius_bottom_left = 1
+
+; ------------------------------------------------------------------
+
+[node name="Battle" type="CanvasLayer"]
+layer = 10
+script = ExtResource("1_battle")
+
+[node name="Background" type="ColorRect" parent="."]
+offset_left = 0
+offset_top = 0
+offset_right = 240
+offset_bottom = 160
+color = Color(0.92, 0.94, 0.85, 1)
+
+[node name="GroundBand" type="ColorRect" parent="."]
+offset_left = 0
+offset_top = 96
+offset_right = 240
+offset_bottom = 112
+color = Color(0.70, 0.82, 0.45, 1)
+
+[node name="EnemySprite" type="Sprite2D" parent="."]
+position = Vector2(180, 48)
+centered = true
+
+; --- Enemy HUD (upper-left) -----------------------------------------
+[node name="EnemyHUD" type="Node2D" parent="."]
+position = Vector2(8, 10)
+
+[node name="Box" type="Panel" parent="EnemyHUD"]
+offset_left = 0
+offset_top = 0
+offset_right = 96
+offset_bottom = 24
+theme_override_styles/panel = SubResource("sb_box")
+
+[node name="NameLabel" type="Label" parent="EnemyHUD"]
+offset_left = 4
+offset_top = 2
+offset_right = 92
+offset_bottom = 13
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 8
+
+[node name="HPBarBG" type="Panel" parent="EnemyHUD"]
+offset_left = 40
+offset_top = 14
+offset_right = 88
+offset_bottom = 20
+theme_override_styles/panel = SubResource("sb_hpbar_bg")
+
+[node name="HPFill" type="ColorRect" parent="EnemyHUD"]
+offset_left = 40
+offset_top = 15
+offset_right = 88
+offset_bottom = 18
+color = Color(0.35, 0.82, 0.30, 1)
+
+[node name="PlayerSprite" type="Sprite2D" parent="."]
+position = Vector2(60, 80)
+centered = true
+
+; --- Player HUD (lower-right) ---------------------------------------
+[node name="PlayerHUD" type="Node2D" parent="."]
+position = Vector2(136, 72)
+
+[node name="Box" type="Panel" parent="PlayerHUD"]
+offset_left = 0
+offset_top = 0
+offset_right = 96
+offset_bottom = 32
+theme_override_styles/panel = SubResource("sb_box")
+
+[node name="NameLabel" type="Label" parent="PlayerHUD"]
+offset_left = 4
+offset_top = 2
+offset_right = 92
+offset_bottom = 13
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 8
+
+[node name="HPBarBG" type="Panel" parent="PlayerHUD"]
+offset_left = 40
+offset_top = 14
+offset_right = 88
+offset_bottom = 20
+theme_override_styles/panel = SubResource("sb_hpbar_bg")
+
+[node name="HPFill" type="ColorRect" parent="PlayerHUD"]
+offset_left = 40
+offset_top = 15
+offset_right = 88
+offset_bottom = 18
+color = Color(0.35, 0.82, 0.30, 1)
+
+[node name="HPNumbers" type="Label" parent="PlayerHUD"]
+offset_left = 40
+offset_top = 20
+offset_right = 92
+offset_bottom = 30
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 8
+
+; --- Dialog box (bottom-left) ---------------------------------------
+[node name="DialogBox" type="Panel" parent="."]
+offset_left = 4
+offset_top = 116
+offset_right = 136
+offset_bottom = 156
+theme_override_styles/panel = SubResource("sb_box")
+
+[node name="DialogLabel" type="Label" parent="DialogBox"]
+offset_left = 6
+offset_top = 4
+offset_right = 126
+offset_bottom = 36
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 8
+autowrap_mode = 2
+
+; --- Move menu (bottom-right, wrapped in a panel with padding) ------
+[node name="MoveMenu" type="Panel" parent="."]
+offset_left = 140
+offset_top = 112
+offset_right = 236
+offset_bottom = 156
+theme_override_styles/panel = SubResource("sb_box")
+
+; Cursor: border-only panel that wraps the selected button (set in code).
+[node name="Cursor" type="Panel" parent="MoveMenu"]
+offset_left = 4
+offset_top = 4
+offset_right = 48
+offset_bottom = 22
+theme_override_styles/panel = SubResource("sb_cursor")
+visible = false
+
+; Button layout: 4px padding on all sides; two rows of two 40x14 buttons
+; with 4px horizontal and 4px vertical gap between them.
+[node name="Move1" type="Panel" parent="MoveMenu"]
+offset_left = 6
+offset_top = 6
+offset_right = 46
+offset_bottom = 20
+theme_override_styles/panel = SubResource("sb_button")
+
+[node name="Label" type="Label" parent="MoveMenu/Move1"]
+offset_left = 0
+offset_top = 2
+offset_right = 40
+offset_bottom = 14
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 8
+horizontal_alignment = 1
+
+[node name="Move2" type="Panel" parent="MoveMenu"]
+offset_left = 50
+offset_top = 6
+offset_right = 90
+offset_bottom = 20
+theme_override_styles/panel = SubResource("sb_button")
+
+[node name="Label" type="Label" parent="MoveMenu/Move2"]
+offset_left = 0
+offset_top = 2
+offset_right = 40
+offset_bottom = 14
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 8
+horizontal_alignment = 1
+
+[node name="Move3" type="Panel" parent="MoveMenu"]
+offset_left = 6
+offset_top = 24
+offset_right = 46
+offset_bottom = 38
+theme_override_styles/panel = SubResource("sb_button")
+
+[node name="Label" type="Label" parent="MoveMenu/Move3"]
+offset_left = 0
+offset_top = 2
+offset_right = 40
+offset_bottom = 14
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 8
+horizontal_alignment = 1
+
+[node name="Move4" type="Panel" parent="MoveMenu"]
+offset_left = 50
+offset_top = 24
+offset_right = 90
+offset_bottom = 38
+theme_override_styles/panel = SubResource("sb_button")
+
+[node name="Label" type="Label" parent="MoveMenu/Move4"]
+offset_left = 0
+offset_top = 2
+offset_right = 40
+offset_bottom = 14
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 8
+horizontal_alignment = 1

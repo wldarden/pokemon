@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://bpkmnbt002"]
+
+[ext_resource type="Script" path="res://scripts/battle/battle_test.gd" id="1_bt"]
+
+[node name="BattleTest" type="Node2D"]
+script = ExtResource("1_bt")

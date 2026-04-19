@@ -1,0 +1,8 @@
+Kenney Fonts
+By Kenney (kenney.nl)
+License: CC0 1.0 Universal (public domain) — https://creativecommons.org/publicdomain/zero/1.0/
+Source: https://kenney.nl/assets/kenney-fonts
+
+Files used:
+  Kenney Mini.ttf  — small pixel font, ideal at font_size 8-10
+  Kenney Pixel.ttf — classic pixel font, ideal at font_size 16
