@@ -1,0 +1,18 @@
+[gd_scene format=3 uid="uid://bpkmntr001"]
+
+[ext_resource type="Script" path="res://scripts/overworld/trainer.gd" id="1_trainer"]
+[ext_resource type="Texture2D" path="res://assets/sprites/trainers/alert_bubble.png" id="2_alert"]
+
+[node name="Trainer" type="Node2D"]
+script = ExtResource("1_trainer")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+centered = true
+
+[node name="AlertBubble" type="Sprite2D" parent="."]
+; Sits just above the trainer's head (trainer sprite is 16x16 centered; bubble
+; is 12 tall so offset by 12 to clear the head).
+position = Vector2(0, -14)
+texture = ExtResource("2_alert")
+centered = true
+visible = false
