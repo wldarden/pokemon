@@ -1,0 +1,39 @@
+[gd_resource type="TileSet" format=3 uid="uid://bpkmnow001"]
+
+[ext_resource type="Texture2D" path="res://assets/tilesets/kenney_tiny_town/tilemap_packed.png" id="1_tex"]
+
+[sub_resource type="TileSetAtlasSource" id="tiny_town"]
+texture = ExtResource("1_tex")
+texture_region_size = Vector2i(16, 16)
+; ---- Ground tiles ----
+; (0,0) plain grass
+0:0/0 = 0
+; (1,0) grass w/ wavy detail — used as ENCOUNTER GRASS (tall_grass=true)
+1:0/0 = 0
+1:0/0/custom_data_1 = true
+; Path autotile 3x3 set (rows 1-3, cols 0-2)
+0:1/0 = 0
+1:1/0 = 0
+2:1/0 = 0
+0:2/0 = 0
+1:2/0 = 0
+2:2/0 = 0
+0:3/0 = 0
+1:3/0 = 0
+2:3/0 = 0
+; ---- Objects tiles (transparent, drawn over grass) ----
+; (5,0) bush with face — solid blocker
+5:0/0 = 0
+5:0/0/custom_data_0 = true
+; (4,0)+(4,1) two-tile tree — top decorative, bottom solid
+4:0/0 = 0
+4:1/0 = 0
+4:1/0/custom_data_0 = true
+
+[resource]
+tile_size = Vector2i(16, 16)
+custom_data_layer_0/name = "solid"
+custom_data_layer_0/type = 1
+custom_data_layer_1/name = "tall_grass"
+custom_data_layer_1/type = 1
+sources/0 = SubResource("tiny_town")

@@ -1,0 +1,47 @@
+[gd_scene load_steps=9 format=3 uid="uid://bpkmnow002"]
+
+[ext_resource type="Script" path="res://scripts/overworld/overworld_bootstrap.gd" id="1_bootstrap"]
+[ext_resource type="TileSet" path="res://assets/tilesets/overworld.tres" id="2_tileset"]
+[ext_resource type="PackedScene" path="res://scenes/overworld/Player.tscn" id="3_player"]
+[ext_resource type="Script" path="res://scripts/overworld/encounter_zone.gd" id="4_zone"]
+[ext_resource type="Resource" path="res://data/species/001_bulbasaur.tres" id="5_bulb"]
+[ext_resource type="Resource" path="res://data/species/004_charmander.tres" id="6_char"]
+[ext_resource type="Resource" path="res://data/species/007_squirtle.tres" id="7_squi"]
+[ext_resource type="PackedScene" path="res://scenes/overworld/Trainer.tscn" id="8_trainer"]
+
+[node name="Overworld" type="Node2D"]
+script = ExtResource("1_bootstrap")
+
+[node name="Ground" type="TileMapLayer" parent="."]
+tile_set = ExtResource("2_tileset")
+
+[node name="Objects" type="TileMapLayer" parent="."]
+tile_set = ExtResource("2_tileset")
+
+[node name="Player" parent="." instance=ExtResource("3_player")]
+
+[node name="Overhead" type="TileMapLayer" parent="."]
+tile_set = ExtResource("2_tileset")
+
+[node name="EncounterZone" type="Node" parent="."]
+script = ExtResource("4_zone")
+species_pool = Array[Resource]([ExtResource("5_bulb"), ExtResource("6_char"), ExtResource("7_squi")])
+level_min = 2
+level_max = 5
+encounter_rate = 0.25
+player_path = NodePath("../Player")
+ground_layer_path = NodePath("../Ground")
+
+; --- Trainers ------------------------------------------------------
+; Placed at cell (4, 10) facing UP — stands just below the path, watching
+; the 3 tiles north of them. Walk north of the trainer into their sight
+; cone to trigger the battle.
+[node name="Trainers" type="Node" parent="."]
+
+[node name="Trainer1" parent="Trainers" instance=ExtResource("8_trainer")]
+trainer_id = "route_0_trainer_1"
+sight_tiles = 3
+facing = 1
+opponent_species = ExtResource("6_char")
+opponent_level = 5
+cell = Vector2i(4, 10)
