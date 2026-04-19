@@ -1,0 +1,18 @@
+# Godot
+.godot/
+.import/
+*.import
+export.cfg
+export_presets.cfg
+
+# Brainstorming session state
+.superpowers/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
