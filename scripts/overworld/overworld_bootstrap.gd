@@ -130,9 +130,6 @@ const RING_PLACEMENTS := [
 
 const BATTLE_SCENE := preload("res://scenes/battle/Battle.tscn")
 const TYPE_CHART := preload("res://data/type_chart.tres")
-const BULBASAUR := preload("res://data/species/001_bulbasaur.tres")
-const TACKLE := preload("res://data/moves/tackle.tres")
-const VINE_WHIP := preload("res://data/moves/vine_whip.tres")
 
 var _current_battle: Node = null
 var _spot_in_progress: bool = false
@@ -142,15 +139,8 @@ var _spot_in_progress: bool = false
 func _ready() -> void:
 	_paint_ground()
 	_paint_objects()
-	_init_default_party_if_empty()
 	encounter_zone.wild_encounter_triggered.connect(_on_wild_encounter)
 	player.moved.connect(_on_player_moved_trainer_check)
-
-func _init_default_party_if_empty() -> void:
-	if not GameState.player_party.is_empty():
-		return
-	var starter := PokemonInstance.create(BULBASAUR, 5, [TACKLE, VINE_WHIP])
-	GameState.player_party = [starter]
 
 func _unhandled_input(event: InputEvent) -> void:
 	# Debug heal key (Phase 2b). Remove when Pokémon Center lands.
