@@ -130,6 +130,9 @@ const RING_PLACEMENTS := [
 
 const BATTLE_SCENE := preload("res://scenes/battle/Battle.tscn")
 const TYPE_CHART := preload("res://data/type_chart.tres")
+const PARTY_SCREEN := preload("res://scenes/ui/PartyScreen.tscn")
+
+var _party_screen: Node = null
 
 var _current_battle: Node = null
 var _spot_in_progress: bool = false
@@ -141,6 +144,7 @@ func _ready() -> void:
 	_paint_objects()
 	encounter_zone.wild_encounter_triggered.connect(_on_wild_encounter)
 	player.moved.connect(_on_player_moved_trainer_check)
+	$Player.party_screen_requested.connect(_on_party_screen_requested)
 
 func _unhandled_input(event: InputEvent) -> void:
 	# Debug heal key (Phase 2b). Remove when Pokémon Center lands.
@@ -332,3 +336,25 @@ func _on_trainer_battle_ended(result: BattleResult, trainer: Node) -> void:
 	if result.outcome == BattleResult.Outcome.WIN:
 		trainer.mark_defeated()
 	_on_battle_ended(result)
+
+func _on_party_screen_requested() -> void:
+	if _party_screen != null:
+		return
+	_party_screen = PARTY_SCREEN.instantiate()
+	add_child(_party_screen)
+	_party_screen.swap_requested.connect(_on_party_swap)
+	_party_screen.cancelled.connect(_on_party_closed)
+	$Player.input_locked = true
+	_party_screen.open(GameState.player_party, 0, 2)
+
+func _on_party_swap(a: int, b: int) -> void:
+	var tmp = GameState.player_party[a]
+	GameState.player_party[a] = GameState.player_party[b]
+	GameState.player_party[b] = tmp
+
+func _on_party_closed() -> void:
+	if _party_screen == null:
+		return
+	_party_screen.queue_free()
+	_party_screen = null
+	$Player.input_locked = false

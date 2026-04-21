@@ -3,6 +3,7 @@ extends Node2D
 ## collision against solid tiles on the parent's `Objects` TileMapLayer.
 
 signal moved(new_cell: Vector2i)
+signal party_screen_requested
 
 const TILE_SIZE := 16
 
@@ -63,6 +64,13 @@ func _process(_delta: float) -> void:
 		return
 
 	_tween_to(target_cell)
+
+func _unhandled_input(event: InputEvent) -> void:
+	if input_locked or is_moving:
+		return
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_P:
+		party_screen_requested.emit()
+		get_viewport().set_input_as_handled()
 
 func _read_input() -> int:
 	# ui_up / ui_down / ui_left / ui_right are arrow-keys + d-pad by default in Godot 4.
