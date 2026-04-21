@@ -2,7 +2,6 @@
 .godot/
 .import/
 *.import
-*.uid
 export.cfg
 export_presets.cfg
 
@@ -21,4 +20,3 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
-.gutconfig.json

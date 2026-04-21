@@ -131,8 +131,9 @@ const RING_PLACEMENTS := [
 const BATTLE_SCENE := preload("res://scenes/battle/Battle.tscn")
 const TYPE_CHART := preload("res://data/type_chart.tres")
 const PARTY_SCREEN := preload("res://scenes/ui/PartyScreen.tscn")
+const PartyScreenScript := preload("res://scripts/ui/party_screen.gd")
 
-var _party_screen: Node = null
+var _party_screen: PartyScreenScript = null
 
 var _current_battle: Node = null
 var _spot_in_progress: bool = false
@@ -345,7 +346,7 @@ func _on_party_screen_requested() -> void:
 	_party_screen.swap_requested.connect(_on_party_swap)
 	_party_screen.cancelled.connect(_on_party_closed)
 	$Player.input_locked = true
-	_party_screen.open(GameState.player_party, 0, 2)
+	_party_screen.open(GameState.player_party, 0, PartyScreenScript.Mode.OVERWORLD_REORDER)
 
 func _on_party_swap(a: int, b: int) -> void:
 	var tmp = GameState.player_party[a]
