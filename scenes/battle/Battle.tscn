@@ -237,3 +237,82 @@ offset_bottom = 14
 theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_font_sizes/font_size = 8
 horizontal_alignment = 1
+
+; --- Action menu (top-level FIGHT / POKéMON / BAG / RUN) ------------------
+; Same position + size as MoveMenu; only one is visible at a time. Cursor
+; is shared — it lives under MoveMenu but battle.gd retargets it by state.
+[node name="ActionMenu" type="Panel" parent="."]
+offset_left = 140
+offset_top = 112
+offset_right = 236
+offset_bottom = 156
+theme_override_styles/panel = SubResource("sb_box")
+visible = false
+
+[node name="Fight" type="Panel" parent="ActionMenu"]
+offset_left = 6
+offset_top = 6
+offset_right = 46
+offset_bottom = 20
+theme_override_styles/panel = SubResource("sb_button")
+
+[node name="Label" type="Label" parent="ActionMenu/Fight"]
+offset_left = 0
+offset_top = 2
+offset_right = 40
+offset_bottom = 14
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 8
+horizontal_alignment = 1
+text = "FIGHT"
+
+[node name="Pokemon" type="Panel" parent="ActionMenu"]
+offset_left = 50
+offset_top = 6
+offset_right = 90
+offset_bottom = 20
+theme_override_styles/panel = SubResource("sb_button")
+
+[node name="Label" type="Label" parent="ActionMenu/Pokemon"]
+offset_left = 0
+offset_top = 2
+offset_right = 40
+offset_bottom = 14
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 8
+horizontal_alignment = 1
+text = "POKéMON"
+
+[node name="Bag" type="Panel" parent="ActionMenu"]
+offset_left = 6
+offset_top = 24
+offset_right = 46
+offset_bottom = 38
+theme_override_styles/panel = SubResource("sb_button")
+
+[node name="Label" type="Label" parent="ActionMenu/Bag"]
+offset_left = 0
+offset_top = 2
+offset_right = 40
+offset_bottom = 14
+theme_override_colors/font_color = Color(0.5, 0.5, 0.5, 1)
+theme_override_font_sizes/font_size = 8
+horizontal_alignment = 1
+text = "BAG"
+
+[node name="Run" type="Panel" parent="ActionMenu"]
+offset_left = 50
+offset_top = 24
+offset_right = 90
+offset_bottom = 38
+theme_override_styles/panel = SubResource("sb_button")
+
+[node name="Label" type="Label" parent="ActionMenu/Run"]
+offset_left = 0
+offset_top = 2
+offset_right = 40
+offset_bottom = 14
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 8
+horizontal_alignment = 1
+text = "RUN"

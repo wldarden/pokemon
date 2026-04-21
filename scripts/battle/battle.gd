@@ -33,6 +33,19 @@ signal battle_ended(result: BattleResult)
 ]
 @onready var cursor: Panel = $MoveMenu/Cursor
 
+@onready var action_menu: Panel = $ActionMenu
+@onready var action_buttons: Array[Panel] = [
+	$ActionMenu/Fight, $ActionMenu/Pokemon,
+	$ActionMenu/Bag, $ActionMenu/Run,
+]
+
+const ACTION_FIGHT := 0
+const ACTION_POKEMON := 1
+const ACTION_BAG := 2
+const ACTION_RUN := 3
+
+var selected_action_idx: int = 0
+
 var player_party: Array = []
 var enemy_party: Array = []
 var context: BattleContext
@@ -40,7 +53,16 @@ var context: BattleContext
 var player_mon: PokemonInstance
 var enemy_mon: PokemonInstance
 
-enum State { BOOTING, CHOOSE_ACTION, RESOLVING, ENDED }
+enum State {
+	BOOTING,
+	ACTION_MENU,     # top-level FIGHT / POKéMON / BAG / RUN picker
+	MOVE_MENU,       # existing 2x2 move grid (was CHOOSE_ACTION)
+	PARTY_MENU,      # PartyScreen open (wired in 2c.7)
+	SWITCHING_IN,    # "Come back / Go" narration (wired in 2c.7)
+	FAINT_SWITCH,    # forced-switch PartyScreen after active KO (wired in 2c.8)
+	RESOLVING,
+	ENDED,
+}
 var state: int = State.BOOTING
 var selected_move_idx: int = 0
 
@@ -52,6 +74,7 @@ const CHAR_PRINT_DELAY := 0.03   # seconds per character in the typewriter effec
 func _ready() -> void:
 	dialog_box.visible = false
 	move_menu.visible = false
+	action_menu.visible = false
 	enemy_hp_bg.visible = false
 	player_hp_bg.visible = false
 
@@ -72,11 +95,14 @@ func start(p_player: Array, p_enemy: Array, p_context: BattleContext) -> void:
 	player_hp_bg.visible = true
 	dialog_box.visible = true
 
-	_enter_choose_action()
+	_enter_action_menu()
 
 func _process(_delta: float) -> void:
-	if state == State.CHOOSE_ACTION:
-		_handle_menu_input()
+	match state:
+		State.ACTION_MENU:
+			_handle_action_menu_input()
+		State.MOVE_MENU:
+			_handle_menu_input()
 
 # ---- Display / refresh -----------------------------------------------------
 
@@ -333,13 +359,22 @@ func _print_dialog(msg: String) -> void:
 		await get_tree().process_frame
 	await get_tree().create_timer(DIALOG_LINGER).timeout
 
-# ---- CHOOSE_ACTION state ---------------------------------------------------
+# ---- ACTION_MENU / MOVE_MENU states ---------------------------------------
 
-func _enter_choose_action() -> void:
-	state = State.CHOOSE_ACTION
+func _enter_action_menu() -> void:
+	state = State.ACTION_MENU
 	_refresh_labels()
 	_set_dialog("What will %s do?" % player_mon.species.species_name)
+	action_menu.visible = true
+	move_menu.visible = false
+	selected_action_idx = 0
+	_update_action_cursor()
+
+func _enter_move_menu() -> void:
+	state = State.MOVE_MENU
+	action_menu.visible = false
 	move_menu.visible = true
+	_clamp_cursor()
 	_update_cursor_position()
 
 func _handle_menu_input() -> void:
@@ -386,6 +421,61 @@ func _update_cursor_position() -> void:
 	cursor.position = btn.position + Vector2(-2, -2)
 	cursor.size = btn.size + Vector2(4, 4)
 
+func _handle_action_menu_input() -> void:
+	var changed := false
+	if Input.is_action_just_pressed("ui_right") and selected_action_idx % 2 == 0:
+		selected_action_idx += 1
+		changed = true
+	elif Input.is_action_just_pressed("ui_left") and selected_action_idx % 2 == 1:
+		selected_action_idx -= 1
+		changed = true
+	elif Input.is_action_just_pressed("ui_down") and selected_action_idx < 2:
+		selected_action_idx += 2
+		changed = true
+	elif Input.is_action_just_pressed("ui_up") and selected_action_idx >= 2:
+		selected_action_idx -= 2
+		changed = true
+	elif Input.is_action_just_pressed("ui_accept"):
+		_submit_action(selected_action_idx)
+		return
+
+	if changed:
+		_update_action_cursor()
+
+func _update_action_cursor() -> void:
+	cursor.visible = true
+	var btn: Panel = action_buttons[selected_action_idx]
+	# ActionMenu is sibling of MoveMenu; cursor lives under MoveMenu. Translate
+	# the button's position into ActionMenu-local + ActionMenu's offset, then
+	# back into MoveMenu-local for the cursor. Since ActionMenu and MoveMenu
+	# share the same top-left (140,112), translation cancels out — just reuse
+	# the button position directly.
+	cursor.position = btn.position + Vector2(-2, -2)
+	cursor.size = btn.size + Vector2(4, 4)
+
+func _submit_action(idx: int) -> void:
+	match idx:
+		ACTION_FIGHT:
+			_enter_move_menu()
+		ACTION_POKEMON:
+			# Wired in 2c.7 — non-destructive stub for now.
+			_set_dialog("(POKéMON menu — wired in 2c.7)")
+		ACTION_BAG:
+			_set_dialog("The BAG is empty…")
+		ACTION_RUN:
+			_try_run()
+
+func _try_run() -> void:
+	if context.is_trainer:
+		await _print_dialog("No! There's no running from a trainer battle!")
+		_enter_action_menu()
+		return
+	await _print_dialog("Got away safely!")
+	state = State.ENDED
+	var result := BattleResult.new()
+	result.outcome = BattleResult.Outcome.ESCAPED
+	battle_ended.emit(result)
+
 # ---- RESOLVING state -------------------------------------------------------
 
 func _submit_player_move(idx: int) -> void:
@@ -430,7 +520,7 @@ func _resolve_turn(p_move: Move, e_move: Move) -> void:
 	if first_attacker.is_fainted():
 		await _handle_faint(first_attacker)
 		return
-	_enter_choose_action()
+	_enter_action_menu()
 
 func _execute_attack(attacker: PokemonInstance, defender: PokemonInstance, move: Move) -> void:
 	await _print_dialog("%s used %s!" % [attacker.species.species_name, move.move_name])
