@@ -129,6 +129,71 @@ func _refresh_move_menu() -> void:
 func _set_dialog(msg: String) -> void:
 	dialog_label.text = msg
 
+## Waits until ui_accept is pressed. Used to gate level-up screens.
+func _await_confirm() -> void:
+	# Ensure the player has released any in-flight ui_accept (the one that
+	# dismissed the previous screen) before we start listening. Otherwise a
+	# held Enter key would skip through both screens in one frame.
+	while Input.is_action_pressed("ui_accept"):
+		await get_tree().process_frame
+	while not Input.is_action_just_pressed("ui_accept"):
+		await get_tree().process_frame
+
+## Temporarily expands the DialogBox (and its inner Label) to span the full
+## bottom bar of the viewport with enough vertical room for the 3-line stat
+## layout, shows the two level-up screens for one LevelUpEvent (each gated
+## on ui_accept), then restores the original sizes.
+func _show_level_up_screens(event: LevelUpEvent) -> void:
+	var box_pos: Vector2 = dialog_box.position
+	var box_size: Vector2 = dialog_box.size
+	var label_size: Vector2 = dialog_label.size
+
+	# Grow up-and-right: top moves up by 16px, width expands to 232, total
+	# height 56 (fits header + blank + 3 stat lines at ~10 px/line).
+	dialog_box.position = Vector2(box_pos.x, 100.0)
+	dialog_box.size = Vector2(232.0, 56.0)
+	# The Label is a child of DialogBox; its position stays relative, only
+	# size needs to grow.
+	dialog_label.size = Vector2(220.0, 48.0)
+
+	await _print_dialog("%s grew to Lv. %d!" % [player_mon.species.species_name, event.new_level])
+	_set_dialog(_format_delta_screen(event))
+	await _await_confirm()
+
+	_set_dialog(_format_totals_screen(event))
+	await _await_confirm()
+
+	dialog_box.position = box_pos
+	dialog_box.size = box_size
+	dialog_label.size = label_size
+	_set_dialog("")
+
+func _format_delta_screen(event: LevelUpEvent) -> String:
+	# Three-per-row layout (physical on top, special/speed on bottom) — fits
+	# in ~3 content lines (header + 2 stat rows) well within the expanded
+	# dialog box.
+	var d: Dictionary = event.stat_deltas
+	return "%s grew to Lv. %d!\n\n  HP %+d   ATK %+d   DEF %+d\n  SPA %+d  SPD %+d   SPE %+d" % [
+		player_mon.species.species_name, event.new_level,
+		int(d["hp"]),  int(d["atk"]), int(d["def"]),
+		int(d["spa"]), int(d["spd"]), int(d["spe"]),
+	]
+
+func _format_totals_screen(event: LevelUpEvent) -> String:
+	# Shows old=>new so the player can eyeball progression at a glance,
+	# without having to remember the deltas from screen 1.
+	var o: Dictionary = event.old_stats
+	var n: Dictionary = event.new_stats
+	return "%s  L%d\n\n  HP: %d=>%d  ATK: %d=>%d  DEF: %d=>%d\n  SPA: %d=>%d  SPD: %d=>%d  SPE: %d=>%d" % [
+		player_mon.species.species_name, event.new_level,
+		int(o["hp"]),  int(n["hp"]),
+		int(o["atk"]), int(n["atk"]),
+		int(o["def"]), int(n["def"]),
+		int(o["spa"]), int(n["spa"]),
+		int(o["spd"]), int(n["spd"]),
+		int(o["spe"]), int(n["spe"]),
+	]
+
 ## Typewriter: reveals the message one character at a time, then lingers.
 ## Ui_accept (Enter/Space) skips the typing animation. The final linger is
 ## always applied so players have time to read.
@@ -288,16 +353,23 @@ func _handle_faint(mon: PokemonInstance) -> void:
 	var result := BattleResult.new()
 	if mon == enemy_mon:
 		result.outcome = BattleResult.Outcome.WIN
-		result.xp_gained = _compute_xp_placeholder()
+		result.xp_gained = _compute_xp_for_opponent(enemy_mon)
 		await _print_dialog("%s gained %d EXP!" % [player_mon.species.species_name, result.xp_gained])
+
+		# Apply XP and narrate any level-ups before the battle ends.
+		var events: Array[LevelUpEvent] = player_mon.gain_exp(result.xp_gained)
+		if not events.is_empty():
+			# Reflect new max HP in the HUD before showing the stat screens.
+			_refresh_hp_bars(false)
+			_refresh_labels()
+			for event in events:
+				await _show_level_up_screens(event)
 	else:
 		result.outcome = BattleResult.Outcome.LOSE
 		await _print_dialog("You are out of usable Pokémon!")
 
 	battle_ended.emit(result)
 
-func _compute_xp_placeholder() -> int:
-	# Gen 3 formula: xp = base_exp * enemy_level / 7 (simplified; ignores trainer/participant bonuses).
-	if enemy_mon.species.base_exp_yield <= 0:
-		return 0
-	return max(1, enemy_mon.species.base_exp_yield * enemy_mon.level / 7)
+## Thin wrapper around XpFormula — applies the context's is_trainer flag.
+func _compute_xp_for_opponent(mon: PokemonInstance) -> int:
+	return XpFormula.exp_for_kill(mon, context.is_trainer)
