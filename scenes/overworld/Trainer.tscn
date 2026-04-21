@@ -8,11 +8,15 @@ script = ExtResource("1_trainer")
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
 centered = true
+; 16x24 FR/LG sprite on a 16x16 tile: offset y by -4 so feet align with the
+; tile bottom and the 8-pixel head pokes above the tile.
+offset = Vector2(0, -4)
 
 [node name="AlertBubble" type="Sprite2D" parent="."]
-; Sits just above the trainer's head (trainer sprite is 16x16 centered; bubble
-; is 12 tall so offset by 12 to clear the head).
-position = Vector2(0, -14)
+; Trainer sprite is 16x24 centered with offset (0,-4), so its top is 16 px
+; above the Node2D origin. The bubble is 12 tall; position it so its bottom
+; sits exactly at the sprite top (y = -16 - 6 = -22).
+position = Vector2(0, -22)
 texture = ExtResource("2_alert")
 centered = true
 visible = false

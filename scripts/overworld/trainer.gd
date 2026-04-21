@@ -29,14 +29,27 @@ const TILE_SIZE := 16
 @onready var sprite: Sprite2D = $Sprite2D
 @onready var alert: Sprite2D = $AlertBubble
 
-const TRAINER_TEX := {
-	0: preload("res://assets/sprites/trainers/trainer_down.png"),
-	1: preload("res://assets/sprites/trainers/trainer_up.png"),
-	2: preload("res://assets/sprites/trainers/trainer_left.png"),
-	3: preload("res://assets/sprites/trainers/trainer_right.png"),
-}
+const NPC_SHEET := preload("res://assets/sprites/trainers/frlg/npc_007.png")
+
+# Column in the 13-col NPC strip for each facing direction (stand pose).
+# 0=down(SS)=col1, 1=up(SN)=col4, 2=left(SW)=col7, 3=right(SE)=col10.
+const FACING_COL := {0: 1, 1: 4, 2: 7, 3: 10}
+
+var TRAINER_TEX: Dictionary
+
+func _make_atlas(col: int) -> AtlasTexture:
+	var t := AtlasTexture.new()
+	t.atlas = NPC_SHEET
+	t.region = Rect2(col * 16, 0, 16, 24)
+	return t
 
 func _ready() -> void:
+	TRAINER_TEX = {
+		0: _make_atlas(FACING_COL[0]),
+		1: _make_atlas(FACING_COL[1]),
+		2: _make_atlas(FACING_COL[2]),
+		3: _make_atlas(FACING_COL[3]),
+	}
 	# Snap to the configured cell.
 	position = Vector2(cell.x * TILE_SIZE + TILE_SIZE / 2, cell.y * TILE_SIZE + TILE_SIZE / 2)
 	sprite.texture = TRAINER_TEX[facing]
