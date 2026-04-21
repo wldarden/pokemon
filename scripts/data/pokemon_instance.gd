@@ -39,6 +39,10 @@ static func create(p_species: Species, p_level: int, p_moves: Array = []) -> Pok
 	var p := PokemonInstance.new()
 	p.species = p_species
 	p.level = p_level
+	# Set experience to the threshold for this level so gain_exp() compares
+	# against a consistent baseline. Without this, a freshly-created L5 would
+	# have experience=0 but need 135 XP just to start counting toward L6.
+	p.experience = GrowthCurve.total_exp_at(p_species.growth_rate, p_level)
 	for m in p_moves:
 		p.moves.append(MoveSlot.from_move(m))
 	p.current_hp = p.max_hp()
@@ -92,3 +96,74 @@ func primary_type() -> int:
 ## All of the Pokémon's types (1 or 2 entries).
 func type_list() -> Array:
 	return species.types
+
+# ---- Experience / level-up -----------------------------------------------
+# See docs/superpowers/specs/2026-04-19-phase-2a-exp-leveling-design.md
+
+const LEVEL_CAP := 100
+
+## Add `amount` XP and level up zero or more times. Returns one event per
+## level gained, in order. No-op at level 100 (doesn't even mutate
+## `experience`). `experience` is also clamped to the L100 threshold so no
+## stored value ever exceeds the cap.
+func gain_exp(amount: int) -> Array[LevelUpEvent]:
+	var events: Array[LevelUpEvent] = []
+	if level >= LEVEL_CAP or amount <= 0:
+		return events
+
+	experience += amount
+
+	var cap := GrowthCurve.total_exp_at(species.growth_rate, LEVEL_CAP)
+	if experience > cap:
+		experience = cap
+
+	while level < LEVEL_CAP:
+		var threshold: int = GrowthCurve.total_exp_at(species.growth_rate, level + 1)
+		if experience < threshold:
+			break
+		events.append(_level_up())
+
+	return events
+
+## How many XP points until the next level. 0 at level 100.
+func exp_to_next_level() -> int:
+	if level >= LEVEL_CAP:
+		return 0
+	var threshold: int = GrowthCurve.total_exp_at(species.growth_rate, level + 1)
+	return max(0, threshold - experience)
+
+## Increment level by 1 and recompute stats. Current HP gains the absolute
+## max-HP delta (FR/LG rule — damage taken is preserved as absolute points,
+## not as a percentage). Returns a LevelUpEvent describing the change.
+func _level_up() -> LevelUpEvent:
+	var old_snap := _snapshot_stats()
+	var old_level_v: int = level
+	level += 1
+	var new_snap := _snapshot_stats()
+
+	var hp_delta: int = int(new_snap["hp"]) - int(old_snap["hp"])
+	current_hp += hp_delta
+
+	var deltas := {}
+	for k in old_snap.keys():
+		deltas[k] = int(new_snap[k]) - int(old_snap[k])
+
+	var event := LevelUpEvent.new()
+	event.old_level = old_level_v
+	event.new_level = level
+	event.old_stats = old_snap
+	event.new_stats = new_snap
+	event.stat_deltas = deltas
+	event.hp_delta = hp_delta
+	return event
+
+## Snapshot all six computed stats at the Pokémon's current level.
+func _snapshot_stats() -> Dictionary:
+	return {
+		"hp":  stat(Enums.StatKey.HP),
+		"atk": stat(Enums.StatKey.ATTACK),
+		"def": stat(Enums.StatKey.DEFENSE),
+		"spa": stat(Enums.StatKey.SP_ATTACK),
+		"spd": stat(Enums.StatKey.SP_DEFENSE),
+		"spe": stat(Enums.StatKey.SPEED),
+	}
