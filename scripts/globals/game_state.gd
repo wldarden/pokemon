@@ -1,20 +1,39 @@
 extends Node
 ## Persistent game state, autoloaded as /root/GameState.
 ## Survives scene transitions (overworld -> battle -> overworld).
-## Expanded in later phases; Phase 1.1 only uses player_position / player_facing.
 
-# Player party — populated in Phase 1.2 when battle lands.
-# Typed as Array; element type (PokemonInstance) enforced once that class exists.
-var player_party: Array = []
+const PARTY_MAX := 6
+
+# Player party. Typed as Array[PokemonInstance] in Phase 2c; seeded with 3
+# placeholder Pokémon on boot (see _debug_seed_party). Starter selection +
+# catching + Pokémon Center are separate later sub-phases.
+var player_party: Array[PokemonInstance] = []
 
 # Where the player stood on the overworld when a battle started.
-# Restored after the battle ends.
 var player_position: Vector2i = Vector2i.ZERO
-var player_facing: int = 0  # Direction enum — defined in scripts/overworld/direction.gd later.
+var player_facing: int = 0
 
-# Trainer IDs that have already been defeated (keys are trainer_id strings).
+# Trainer IDs that have already been defeated.
 var defeated_trainers: Dictionary = {}
 
-# Pokedex flags.
+# Pokédex flags.
 var pokedex_seen: Dictionary = {}
 var pokedex_caught: Dictionary = {}
+
+func _ready() -> void:
+	if player_party.is_empty():
+		_debug_seed_party()
+
+# TODO(2d): remove when starter selection + catching land.
+func _debug_seed_party() -> void:
+	var BULBASAUR   := preload("res://data/species/001_bulbasaur.tres")
+	var CHARMANDER  := preload("res://data/species/004_charmander.tres")
+	var SQUIRTLE    := preload("res://data/species/007_squirtle.tres")
+
+	var bulb := PokemonInstance.create(BULBASAUR, 7, DefaultMovesets.for_species(1))
+	var char_mon := PokemonInstance.create(CHARMANDER, 5, DefaultMovesets.for_species(4))
+	var squirt := PokemonInstance.create(SQUIRTLE, 5, DefaultMovesets.for_species(7))
+	# Seed one member at mid-HP so low-HP UI can be eyeballed immediately.
+	char_mon.current_hp = max(1, char_mon.max_hp() / 2)
+
+	player_party = [bulb, char_mon, squirt]
