@@ -168,6 +168,126 @@ func _show_level_up_screens(event: LevelUpEvent) -> void:
 	dialog_label.size = label_size
 	_set_dialog("")
 
+# ---- Move learning (Phase 2b) --------------------------------------------
+
+## Drive the FR/LG-style learn flow for one new move. Auto-learn if a slot is
+## free; otherwise narrate, prompt Y/N, then (on YES) show the move-to-forget
+## menu. Cancelling the move selection loops back to the Y/N prompt so the
+## player can change their mind.
+func _try_learn_move(mon: PokemonInstance, move: Move) -> void:
+	if mon.moves.size() < 4:
+		mon.moves.append(MoveSlot.from_move(move))
+		_refresh_move_menu()
+		await _print_dialog("%s learned %s!" % [mon.species.species_name, move.move_name])
+		return
+
+	await _print_dialog("%s is trying to learn %s..." % [mon.species.species_name, move.move_name])
+	await _print_dialog("But %s already knows 4 moves." % mon.species.species_name)
+
+	while true:
+		var replace: bool = await _yes_no_prompt(
+			"Forget a move to make room for %s?" % move.move_name
+		)
+		if not replace:
+			await _print_dialog("%s did not learn %s." % [mon.species.species_name, move.move_name])
+			return
+		var idx: int = await _select_move_to_forget(mon)
+		if idx == -1:
+			# Cancelled — give the player another chance to answer the prompt.
+			continue
+		var forgotten: Move = mon.moves[idx].move
+		mon.moves[idx] = MoveSlot.from_move(move)
+		_refresh_move_menu()
+		await _print_dialog("Forgot %s and learned %s!" % [forgotten.move_name, move.move_name])
+		return
+
+## Prints `question`, then shows the move menu repurposed as a YES/NO picker.
+## Returns true for YES, false for NO or cancel.
+func _yes_no_prompt(question: String) -> bool:
+	await _print_dialog(question)
+
+	# Relabel the top two move buttons as YES/NO. Hide the bottom two.
+	move_labels[0].text = "YES"
+	move_labels[1].text = "NO"
+	move_buttons[0].visible = true
+	move_buttons[1].visible = true
+	move_buttons[2].visible = false
+	move_buttons[3].visible = false
+	selected_move_idx = 0
+	_update_cursor_position_for_yes_no()
+	move_menu.visible = true
+
+	# Let the ui_accept that dismissed the dialog fully release first.
+	while Input.is_action_pressed("ui_accept"):
+		await get_tree().process_frame
+
+	var result: bool = true
+	while true:
+		await get_tree().process_frame
+		if Input.is_action_just_pressed("ui_right") or Input.is_action_just_pressed("ui_left"):
+			selected_move_idx = 1 - selected_move_idx   # toggle 0↔1
+			_update_cursor_position_for_yes_no()
+		elif Input.is_action_just_pressed("ui_accept"):
+			result = (selected_move_idx == 0)
+			break
+		elif Input.is_action_just_pressed("ui_cancel"):
+			result = false
+			break
+
+	move_menu.visible = false
+	cursor.visible = false
+	_refresh_move_menu()   # restore real move labels + button visibility
+	return result
+
+## Show the move menu as a "pick a move to forget" selector.
+## Returns the index (0..3) of the chosen move, or -1 if the player cancelled.
+func _select_move_to_forget(mon: PokemonInstance) -> int:
+	await _print_dialog("Which move should be forgotten?")
+
+	_refresh_move_menu()   # real labels, all 4 buttons visible
+	selected_move_idx = 0
+	_update_cursor_position()
+	move_menu.visible = true
+
+	while Input.is_action_pressed("ui_accept"):
+		await get_tree().process_frame
+
+	var result_idx: int = -1
+	while true:
+		await get_tree().process_frame
+		var move_count: int = mon.moves.size()
+		if Input.is_action_just_pressed("ui_right"):
+			selected_move_idx = (selected_move_idx + 1) % move_count
+			_update_cursor_position()
+		elif Input.is_action_just_pressed("ui_left"):
+			selected_move_idx = (selected_move_idx - 1 + move_count) % move_count
+			_update_cursor_position()
+		elif Input.is_action_just_pressed("ui_down") and selected_move_idx + 2 < move_count:
+			selected_move_idx += 2
+			_update_cursor_position()
+		elif Input.is_action_just_pressed("ui_up") and selected_move_idx - 2 >= 0:
+			selected_move_idx -= 2
+			_update_cursor_position()
+		elif Input.is_action_just_pressed("ui_accept"):
+			result_idx = selected_move_idx
+			break
+		elif Input.is_action_just_pressed("ui_cancel"):
+			result_idx = -1
+			break
+
+	move_menu.visible = false
+	cursor.visible = false
+	return result_idx
+
+## YES/NO layout doesn't use the main `_update_cursor_position` because that
+## one clamps to `player_mon.moves.size()` — which might be 4, putting the
+## cursor on a hidden button. Always wrap the top-left or top-right button.
+func _update_cursor_position_for_yes_no() -> void:
+	cursor.visible = true
+	var btn: Panel = move_buttons[selected_move_idx]
+	cursor.position = btn.position + Vector2(-2, -2)
+	cursor.size = btn.size + Vector2(4, 4)
+
 func _format_delta_screen(event: LevelUpEvent) -> String:
 	# Three-per-row layout (physical on top, special/speed on bottom) — fits
 	# in ~3 content lines (header + 2 stat rows) well within the expanded
@@ -364,6 +484,15 @@ func _handle_faint(mon: PokemonInstance) -> void:
 			_refresh_labels()
 			for event in events:
 				await _show_level_up_screens(event)
+				# Phase 2b: consult learnset, teach any new moves learned
+				# at this level (one at a time, in sorted order).
+				var new_moves: Array[Move] = LearnsetResolver.moves_learned_at(
+					player_mon.species, event.new_level
+				)
+				for move in new_moves:
+					if LearnsetResolver.already_knows(player_mon, move):
+						continue
+					await _try_learn_move(player_mon, move)
 	else:
 		result.outcome = BattleResult.Outcome.LOSE
 		await _print_dialog("You are out of usable Pokémon!")

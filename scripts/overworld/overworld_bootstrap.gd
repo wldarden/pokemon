@@ -59,6 +59,25 @@ func _init_default_party_if_empty() -> void:
 	var starter := PokemonInstance.create(BULBASAUR, 5, [TACKLE, VINE_WHIP])
 	GameState.player_party = [starter]
 
+
+# ---- Debug helpers (remove when no longer useful) -------------------------
+
+## H on the overworld: fully heal the whole party (HP, status, PP). Handy
+## while testing move-learning at high levels before we have a Pokémon Center
+## (Phase 2d).
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo:
+		if event.keycode == KEY_H:
+			_debug_heal_party()
+
+func _debug_heal_party() -> void:
+	for mon in GameState.player_party:
+		mon.current_hp = mon.max_hp()
+		mon.status = Enums.StatusCondition.NONE
+		for slot in mon.moves:
+			slot.pp_current = slot.move.pp
+	print("[DEBUG] Party healed.")
+
 func _on_wild_encounter(species: Species, level: int) -> void:
 	# Guard against a second overlay starting before the first one finishes.
 	if _current_battle != null:
