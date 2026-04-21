@@ -6,7 +6,11 @@ const CHARMANDER := preload("res://data/species/004_charmander.tres")
 const SQUIRTLE   := preload("res://data/species/007_squirtle.tres")
 const TACKLE     := preload("res://data/moves/tackle.tres")
 
-# Type alias for trainer team since class_name might not be immediately available
+# GUT's headless parser can't resolve `TrainerTeam.new()` from `class_name`
+# registration alone for newly-added Resource classes — removing this
+# preload causes the whole file to silently fail to load, dropping all 12
+# tests. Other class_names (PartyHelpers, XpFormula, etc.) work bare here
+# because the suite only uses them via static calls.
 const TrainerTeam := preload("res://scripts/data/trainer_team.gd")
 
 # ---- XpFormula.split_among_participants ----------------------------------
