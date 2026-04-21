@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="Move" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/move.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+move_name = "Megahorn"
+type = 11
+category = 0
+power = 120
+accuracy = 85
+pp = 10
+priority = 0

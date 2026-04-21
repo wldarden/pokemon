@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="Move" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/move.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+move_name = "Night Shade"
+type = 13
+category = 0
+power = 0
+accuracy = 100
+pp = 15
+priority = 0

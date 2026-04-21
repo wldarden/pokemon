@@ -5,15 +5,20 @@ Fetch Pokémon data from pokeapi.co and generate Godot .tres resource files.
 Usage:
     python3 tools/fetch_pokeapi.py
 
-Run once during development. The app never calls PokéAPI at runtime.
+Run during development when you want to refresh data. The app never calls
+PokéAPI at runtime. All three passes are idempotent — re-runs skip files that
+already exist.
 
-Outputs:
-    assets/sprites/pokemon/front_NNN.png, back_NNN.png   (Gen 3 FR/LG sprites)
-    data/species/NNN_<name>.tres                         (Species Resource)
-    data/moves/<name>.tres                                (Move Resource)
-    data/type_chart.tres                                  (TypeChart Resource)
+Passes (in order):
+    1. Type chart (rewrites data/type_chart.tres each run).
+    2. All moves (~920): paginates PokéAPI /move/, writes data/moves/<name>.tres
+       for any missing entry. Skips ones already on disk.
+    3. Species in SPECIES_IDS: rewrites data/species/NNN_<name>.tres with Gen-3
+       learnsets and downloads FR/LG sprite assets if missing.
 
-Network: ~10 GETs total for Phase 1 data. PokéAPI is unauthenticated and free.
+Network: ~20 calls for type+species plus ~920 for the move catalog. ~5 min
+total the first time; <10s on re-runs (catalog fully cached).
+PokéAPI is unauthenticated and free. User-Agent is set to identify us.
 """
 
 from __future__ import annotations
@@ -21,9 +26,11 @@ import json
 import os
 import ssl
 import sys
+import time
 import urllib.request
+import urllib.error
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SPRITES_DIR = REPO_ROOT / "assets" / "sprites" / "pokemon"
@@ -33,9 +40,10 @@ TYPE_CHART_PATH = REPO_ROOT / "data" / "type_chart.tres"
 
 API = "https://pokeapi.co/api/v2"
 
-# --- Phase 1 fetch targets.
+# --- Fetch targets.
+# Species: only the Pokémon we want .tres files for. The move catalog is
+# fetched separately via pagination (all ~920 moves, Phase 2b+).
 SPECIES_IDS = [1, 4, 7]  # Bulbasaur, Charmander, Squirtle
-MOVE_NAMES = ["tackle", "scratch", "vine-whip", "ember"]
 
 # Map PokéAPI version_group names → generation number.
 # PokéAPI past_values semantics: each entry's values applied UP TO AND INCLUDING
@@ -56,6 +64,15 @@ VERSION_GROUP_GEN = {
     "legends-arceus": 8, "scarlet-violet": 9,
 }
 TARGET_GEN = 3
+
+# Gen-3 version groups we accept when extracting learnsets, ordered by
+# increasing preference — if two version groups disagree on the level at which
+# a species learns a move, the higher-priority (FR/LG) entry wins.
+GEN3_VERSION_GROUP_PRIORITY = {
+    "ruby-sapphire": 0,
+    "emerald": 1,
+    "firered-leafgreen": 2,
+}
 
 # Gen 3 splits physical vs special by TYPE, not per-move.
 GEN3_PHYSICAL_TYPES = {
@@ -93,10 +110,24 @@ GROWTH_RATE_ENUM = {
 _SSL_CTX = ssl.create_default_context(cafile="/etc/ssl/cert.pem")
 
 
-def get_json(url: str) -> Dict[str, Any]:
-    req = urllib.request.Request(url, headers={"User-Agent": "pokemon-gameboy-phase1/0.1"})
-    with urllib.request.urlopen(req, context=_SSL_CTX, timeout=30) as resp:
-        return json.load(resp)
+def get_json(url: str, retries: int = 3) -> Dict[str, Any]:
+    """GET a JSON endpoint with exponential-backoff retry on transient failures."""
+    backoffs = [0.2, 0.5, 1.5]  # seconds
+    last_err: Optional[Exception] = None
+    for attempt in range(retries + 1):
+        try:
+            req = urllib.request.Request(
+                url, headers={"User-Agent": "pokemon-gameboy-phase1/0.1"}
+            )
+            with urllib.request.urlopen(req, context=_SSL_CTX, timeout=30) as resp:
+                return json.load(resp)
+        except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError) as e:
+            last_err = e
+            if attempt < retries:
+                time.sleep(backoffs[min(attempt, len(backoffs) - 1)])
+                continue
+            break
+    raise RuntimeError(f"GET {url} failed after {retries + 1} attempts: {last_err}")
 
 
 def download_binary(url: str, dest: Path) -> None:
@@ -154,6 +185,75 @@ def fetch_move_gen3(name: str) -> Dict[str, Any]:
     }
 
 
+def fetch_all_moves(sleep_between: float = 0.05) -> Tuple[int, int]:
+    """Fetch every move in PokéAPI via pagination and write .tres files.
+
+    Idempotent: skips moves whose .tres already exists, so re-runs are cheap.
+    Returns (total_api_moves, newly_written).
+    """
+    offset = 0
+    total: Optional[int] = None
+    processed = 0
+    fetched = 0
+    while True:
+        page = get_json(f"{API}/move/?limit=60&offset={offset}")
+        if total is None:
+            total = int(page.get("count", 0))
+            print(f"  catalog size: {total} moves")
+        for entry in page["results"]:
+            name = entry["name"]
+            filename = name.replace("-", "_") + ".tres"
+            dest = MOVES_DIR / filename
+            if dest.exists():
+                processed += 1
+                continue
+            try:
+                m = fetch_move_gen3(name)
+                write_move_tres(m)
+                fetched += 1
+                if fetched % 25 == 0:
+                    print(f"  fetched {fetched} new moves ({processed} total)...")
+            except (KeyError, RuntimeError) as e:
+                # Some moves may be malformed (shadow moves, etc.); skip them.
+                print(f"  skipping {name}: {e}")
+            processed += 1
+            if sleep_between > 0:
+                time.sleep(sleep_between)
+        if not page.get("next"):
+            break
+        offset += 60
+    return total or 0, fetched
+
+
+def extract_learnset(pkmn_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Extract Gen-3 level-up learnset from a /pokemon/{id} response.
+
+    Filters to level-up method in Gen-3 version groups. When multiple groups
+    disagree on the level, the highest-priority entry (FR/LG > Emerald > RS)
+    wins. Returns sorted [{"level": int, "move_name": str}, ...].
+    """
+    by_move: Dict[str, Tuple[int, int]] = {}  # name -> (priority, level)
+    for m in pkmn_data.get("moves", []):
+        move_name: str = m["move"]["name"]
+        for vgd in m.get("version_group_details", []):
+            vg = vgd["version_group"]["name"]
+            if vg not in GEN3_VERSION_GROUP_PRIORITY:
+                continue
+            if vgd["move_learn_method"]["name"] != "level-up":
+                continue
+            priority = GEN3_VERSION_GROUP_PRIORITY[vg]
+            level = int(vgd.get("level_learned_at", 0))
+            existing = by_move.get(move_name)
+            if existing is None or priority > existing[0]:
+                by_move[move_name] = (priority, level)
+    entries = [
+        {"level": lvl, "move_name": name}
+        for name, (_, lvl) in by_move.items()
+    ]
+    entries.sort(key=lambda e: (e["level"], e["move_name"]))
+    return entries
+
+
 # --------------------------------------------------------------------
 # Species data
 
@@ -177,6 +277,7 @@ def fetch_species(dex: int) -> Dict[str, Any]:
 
     capture_rate = species["capture_rate"]
     growth_name = species["growth_rate"]["name"]
+    learnset = extract_learnset(pkmn)
 
     return {
         "dex": dex,
@@ -189,6 +290,7 @@ def fetch_species(dex: int) -> Dict[str, Any]:
         "growth_rate": growth_name,
         "front_url": front_url,
         "back_url": back_url,
+        "learnset": learnset,
     }
 
 
@@ -238,6 +340,21 @@ def write_species_tres(s: Dict[str, Any]) -> Path:
 
     growth_int = GROWTH_RATE_ENUM.get(s["growth_rate"], 0)
 
+    # Serialize the learnset as an inline array of dictionaries. Each entry:
+    # {"level": int, "move_path": "res://data/moves/<name_with_underscores>.tres"}
+    learnset_entries = s.get("learnset", [])
+    if learnset_entries:
+        parts: List[str] = []
+        for entry in learnset_entries:
+            move_file = entry["move_name"].replace("-", "_") + ".tres"
+            move_path = f"res://data/moves/{move_file}"
+            parts.append(
+                f'{{"level": {int(entry["level"])}, "move_path": "{move_path}"}}'
+            )
+        learnset_str = "Array[Dictionary]([" + ", ".join(parts) + "])"
+    else:
+        learnset_str = "[]"
+
     content = (
         "[gd_resource type=\"Resource\" script_class=\"Species\" load_steps=4 format=3]\n\n"
         "[ext_resource type=\"Script\" path=\"res://scripts/data/species.gd\" id=\"1_script\"]\n"
@@ -252,7 +369,7 @@ def write_species_tres(s: Dict[str, Any]) -> Path:
         f"catch_rate = {s['capture_rate']}\n"
         f"base_exp_yield = {s['base_exp']}\n"
         f"growth_rate = {growth_int}\n"
-        "learnset = []\n"
+        f"learnset = {learnset_str}\n"
         "front_sprite = ExtResource(\"2_front\")\n"
         "back_sprite = ExtResource(\"3_back\")\n"
         "evolutions = []\n"
@@ -327,27 +444,27 @@ def main() -> int:
     tc_path = write_type_chart_tres(relations)
     print(f"  wrote {tc_path.relative_to(REPO_ROOT)}")
 
-    print("\nFetching species...")
+    print("\nFetching ALL moves (idempotent — skips existing .tres files)...")
+    total, new = fetch_all_moves()
+    print(f"  done: {new} new moves written (of {total} in catalog)")
+
+    print("\nFetching species (with Gen-3 learnsets)...")
     for dex in SPECIES_IDS:
         s = fetch_species(dex)
         front = SPRITES_DIR / f"front_{dex:03d}.png"
         back = SPRITES_DIR / f"back_{dex:03d}.png"
-        print(f"  #{dex:03d} {s['display_name']}: types={s['types']}, stats={s['base_stats']}")
-        download_binary(s["front_url"], front)
-        download_binary(s["back_url"], back)
-        path = write_species_tres(s)
-        print(f"    -> {path.relative_to(REPO_ROOT)}, front {front.name}, back {back.name}")
-
-    print("\nFetching moves...")
-    for name in MOVE_NAMES:
-        m = fetch_move_gen3(name)
-        path = write_move_tres(m)
         print(
-            f"  {m['display_name']}: type={m['type']}, cat={m['category']}, "
-            f"power={m['power']}, acc={m['accuracy']}, pp={m['pp']} -> {path.relative_to(REPO_ROOT)}"
+            f"  #{dex:03d} {s['display_name']}: types={s['types']}, "
+            f"stats={s['base_stats']}, learnset entries={len(s['learnset'])}"
         )
+        if not front.exists():
+            download_binary(s["front_url"], front)
+        if not back.exists():
+            download_binary(s["back_url"], back)
+        path = write_species_tres(s)
+        print(f"    -> {path.relative_to(REPO_ROOT)}")
 
-    print("\nDone. Run `godot --headless --import` to register the new sprite textures.")
+    print("\nDone. Run `godot --headless --import` to register new textures.")
     return 0
 
 
