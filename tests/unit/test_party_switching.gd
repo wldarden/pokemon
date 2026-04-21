@@ -6,6 +6,9 @@ const CHARMANDER := preload("res://data/species/004_charmander.tres")
 const SQUIRTLE   := preload("res://data/species/007_squirtle.tres")
 const TACKLE     := preload("res://data/moves/tackle.tres")
 
+# Type alias for trainer team since class_name might not be immediately available
+const TrainerTeam := preload("res://scripts/data/trainer_team.gd")
+
 # ---- XpFormula.split_among_participants ----------------------------------
 
 func test_xp_split_even() -> void:
@@ -64,3 +67,31 @@ func test_can_switch_to_valid_slot() -> void:
 	assert_false(PartyHelpers.can_switch_to(party, 0, 0), "can't switch to active")
 	# Cannot switch to fainted.
 	assert_false(PartyHelpers.can_switch_to(party, 2, 0), "can't switch to fainted")
+
+
+# ---- TrainerTeam ---------------------------------------------------------
+
+func test_trainer_team_builds_instances_with_default_moves() -> void:
+	var team := TrainerTeam.new()
+	team.entries = [
+		{"species": BULBASAUR, "level": 5},
+		{"species": CHARMANDER, "level": 7},
+		{"species": SQUIRTLE, "level": 6},
+	]
+	var mons: Array = team.build_instances()
+	assert_eq(mons.size(), 3, "3 entries → 3 instances")
+	assert_eq(mons[0].species.dex_number, 1, "slot 0 = Bulbasaur")
+	assert_eq(mons[0].level, 5, "slot 0 level")
+	assert_eq(mons[1].species.dex_number, 4, "slot 1 = Charmander")
+	assert_eq(mons[1].level, 7, "slot 1 level")
+	# Empty moves → DefaultMovesets fallback (Bulbasaur's first default move is TACKLE).
+	assert_gt(mons[0].moves.size(), 0, "default movesets populated")
+
+func test_trainer_team_honors_explicit_moves() -> void:
+	var team := TrainerTeam.new()
+	team.entries = [
+		{"species": BULBASAUR, "level": 5, "moves": [TACKLE]},
+	]
+	var mons: Array = team.build_instances()
+	assert_eq(mons[0].moves.size(), 1, "explicit moves used verbatim")
+	assert_eq(mons[0].moves[0].move, TACKLE, "TACKLE was the supplied move")
