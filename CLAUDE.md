@@ -59,6 +59,12 @@ docs/        # design docs, including the Phase 1 spec
 
 **Deferred to Phase 2+:** party of 6, switching, catching, items, Pokédex UI, leveling up, evolution, multi-map transitions, full dialog system, save/load, audio.
 
+## Asset Reference
+
+- **FR/LG tileset layout:** [`docs/frlg_tileset_reference.md`](docs/frlg_tileset_reference.md) — Spriters Resource conventions (17-px stride, 1-px border), the 5×3 path-group autotile structure, locations of all our extracted tiles, and how to extend the atlas.
+- **Atlas build tool:** [`tools/build_frlg_atlas.py`](tools/build_frlg_atlas.py) — regenerates `assets/tilesets/frlg/frlg_outdoor.png` and `.tres` from the source rips. Idempotent — rerun after any change.
+- **Source rips:** `assets/Pokemon Sprites/` is gitignored (ripped FR/LG, personal-use only).
+
 ## Legal / Asset Note
 
 Ripped FR/LG sprites are used as source assets for personal reference only. This project is not distributable in its current form. If distribution is ever desired, all copyrighted assets must be replaced with original or CC-licensed art first.

@@ -1,7 +1,7 @@
 [gd_scene load_steps=9 format=3 uid="uid://bpkmnow002"]
 
 [ext_resource type="Script" path="res://scripts/overworld/overworld_bootstrap.gd" id="1_bootstrap"]
-[ext_resource type="TileSet" path="res://assets/tilesets/overworld.tres" id="2_tileset"]
+[ext_resource type="TileSet" path="res://assets/tilesets/frlg/frlg_outdoor.tres" id="2_tileset"]
 [ext_resource type="PackedScene" path="res://scenes/overworld/Player.tscn" id="3_player"]
 [ext_resource type="Script" path="res://scripts/overworld/encounter_zone.gd" id="4_zone"]
 [ext_resource type="Resource" path="res://data/species/001_bulbasaur.tres" id="5_bulb"]
