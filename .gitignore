@@ -8,6 +8,10 @@ export_presets.cfg
 # Brainstorming session state
 .superpowers/
 
+# Ripped FR/LG sprite assets — personal reference only, not for distribution.
+# Kept locally for development; excluded from the repo so it stays shareable.
+assets/Pokemon Sprites/
+
 # OS
 .DS_Store
 Thumbs.db
