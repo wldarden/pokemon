@@ -33,6 +33,14 @@ signal battle_ended(result: BattleResult)
 ]
 @onready var cursor: Panel = $MoveMenu/Cursor
 
+# Phase 2c: PartyScreen is instantiated on demand when POKéMON is picked
+# or the active mon faints. Uses a preload for the script so we can type
+# the var and reference Mode by name despite the cross-file class_name
+# resolution limitation in headless parse.
+const PARTY_SCREEN := preload("res://scenes/ui/PartyScreen.tscn")
+const PartyScreenScript := preload("res://scripts/ui/party_screen.gd")
+var _party_screen: PartyScreenScript = null
+
 @onready var action_menu: Panel = $ActionMenu
 @onready var action_buttons: Array[Panel] = [
 	$ActionMenu/Fight, $ActionMenu/Pokemon,
@@ -49,6 +57,16 @@ var selected_action_idx: int = 0
 var player_party: Array = []
 var enemy_party: Array = []
 var context: BattleContext
+
+# Which slot of each side is currently on the field. Active index drives
+# `player_mon` / `enemy_mon` rebinding on every switch.
+var player_active_idx: int = 0
+var enemy_active_idx: int = 0
+
+# Indices into `player_party` that have been active during the current
+# enemy mon's lifetime — the set of eligible XP-split recipients. Reset
+# whenever the enemy changes.
+var current_opponent_participants: Array[int] = []
 
 var player_mon: PokemonInstance
 var enemy_mon: PokemonInstance
@@ -83,8 +101,14 @@ func start(p_player: Array, p_enemy: Array, p_context: BattleContext) -> void:
 	player_party = p_player
 	enemy_party = p_enemy
 	context = p_context
-	player_mon = player_party[0]
-	enemy_mon = enemy_party[0]
+	player_active_idx = PartyHelpers.first_non_fainted(player_party)
+	enemy_active_idx = PartyHelpers.first_non_fainted(enemy_party)
+	if player_active_idx < 0 or enemy_active_idx < 0:
+		push_error("Battle.start: a side has no usable Pokémon.")
+		return
+	player_mon = player_party[player_active_idx]
+	enemy_mon = enemy_party[enemy_active_idx]
+	current_opponent_participants = [player_active_idx]
 
 	_apply_sprites()
 	_refresh_hp_bars(true)
@@ -457,10 +481,7 @@ func _submit_action(idx: int) -> void:
 		ACTION_FIGHT:
 			_enter_move_menu()
 		ACTION_POKEMON:
-			# Wired in 2c.7 — stub narrates and returns to the action menu so
-			# the player isn't stranded on a frozen "What will X do?" prompt.
-			await _print_dialog("(POKéMON menu — wired in 2c.7)")
-			_enter_action_menu()
+			_open_party_screen_switch()
 		ACTION_BAG:
 			await _print_dialog("The BAG is empty…")
 			_enter_action_menu()
@@ -477,6 +498,48 @@ func _try_run() -> void:
 	var result := BattleResult.new()
 	result.outcome = BattleResult.Outcome.ESCAPED
 	battle_ended.emit(result)
+
+# ---- PARTY_MENU / SWITCHING_IN states --------------------------------------
+
+func _open_party_screen_switch() -> void:
+	state = State.PARTY_MENU
+	action_menu.visible = false
+	_party_screen = PARTY_SCREEN.instantiate()
+	add_child(_party_screen)
+	_party_screen.slot_chosen.connect(_on_party_slot_chosen_voluntary)
+	_party_screen.cancelled.connect(_on_party_cancelled_voluntary)
+	_party_screen.open(player_party, player_active_idx, PartyScreenScript.Mode.SWITCH_IN_BATTLE)
+
+func _on_party_slot_chosen_voluntary(idx: int) -> void:
+	_close_party_screen()
+	await _switch_to(idx, false)
+	# Switch spent the turn — enemy attacks. Single-mon enemy party is
+	# assumed in 2c.7; multi-mon trainer flow lands in 2c.8.
+	var enemy_move: Move = _choose_enemy_move()
+	_resolve_enemy_only_turn(enemy_move)
+
+func _on_party_cancelled_voluntary() -> void:
+	_close_party_screen()
+	_enter_action_menu()
+
+func _close_party_screen() -> void:
+	if _party_screen != null:
+		_party_screen.queue_free()
+		_party_screen = null
+
+func _switch_to(idx: int, is_forced: bool) -> void:
+	state = State.SWITCHING_IN
+	if not is_forced:
+		await _print_dialog("Come back, %s!" % player_mon.species.species_name)
+	player_active_idx = idx
+	player_mon = player_party[idx]
+	if not current_opponent_participants.has(idx):
+		current_opponent_participants.append(idx)
+	_apply_sprites()
+	_refresh_hp_bars(true)
+	_refresh_labels()
+	_refresh_move_menu()
+	await _print_dialog("Go, %s!" % player_mon.species.species_name)
 
 # ---- RESOLVING state -------------------------------------------------------
 
@@ -524,6 +587,16 @@ func _resolve_turn(p_move: Move, e_move: Move) -> void:
 		return
 	_enter_action_menu()
 
+## After a voluntary switch-in the enemy attacks uncontested. Same turn
+## order rules apply minus the player's attack half.
+func _resolve_enemy_only_turn(e_move: Move) -> void:
+	state = State.RESOLVING
+	await _execute_attack(enemy_mon, player_mon, e_move)
+	if player_mon.is_fainted():
+		await _handle_faint(player_mon)
+		return
+	_enter_action_menu()
+
 func _execute_attack(attacker: PokemonInstance, defender: PokemonInstance, move: Move) -> void:
 	await _print_dialog("%s used %s!" % [attacker.species.species_name, move.move_name])
 
@@ -556,36 +629,81 @@ func _choose_enemy_move() -> Move:
 	var idx: int = context.rng.randi_range(0, enemy_mon.moves.size() - 1)
 	return enemy_mon.moves[idx].move
 
+# ---- XP distribution / bench level-ups -------------------------------------
+
+## Returns {participant_idx: xp_share} for the current enemy's KO.
+## Defensive fallback: if the participant set is empty (shouldn't happen —
+## the active mon is always added to the set on switch-in), default to just
+## the currently-active index so nobody is skipped.
+func _compute_participant_xp_split(total: int) -> Dictionary:
+	var participants: Array = current_opponent_participants.duplicate()
+	if participants.is_empty():
+		participants = [player_active_idx]
+	var out := {}
+	var each: int = XpFormula.split_among_participants(total, participants.size())
+	for idx in participants:
+		out[idx] = each
+	return out
+
+## Silently apply each LevelUpEvent for a benched participant:
+##   - Stats already updated by gain_exp (it calls _level_up per threshold).
+##   - For each event, auto-learn any new moves if a slot is free.
+##   - Skip (no replace prompt) when the mon already knows 4 moves.
+func _apply_bench_levelups(mon: PokemonInstance, events: Array[LevelUpEvent]) -> void:
+	for event in events:
+		var new_moves: Array[Move] = LearnsetResolver.moves_learned_at(
+			mon.species, event.new_level
+		)
+		for move in new_moves:
+			if LearnsetResolver.already_knows(mon, move):
+				continue
+			if mon.moves.size() < 4:
+				mon.moves.append(MoveSlot.from_move(move))
+			# else: silent skip — no replace prompt for benched mons.
+
 # ---- Faint / outcome -------------------------------------------------------
 
 func _handle_faint(mon: PokemonInstance) -> void:
 	await _print_dialog("%s fainted!" % mon.species.species_name)
 
-	state = State.ENDED
 	var result := BattleResult.new()
 	if mon == enemy_mon:
 		result.outcome = BattleResult.Outcome.WIN
-		result.xp_gained = _compute_xp_for_opponent(enemy_mon)
-		await _print_dialog("%s gained %d EXP!" % [player_mon.species.species_name, result.xp_gained])
+		var total_xp: int = _compute_xp_for_opponent(enemy_mon)
+		result.xp_gained = total_xp
+		var splits: Dictionary = _compute_participant_xp_split(total_xp)
 
-		# Apply XP and narrate any level-ups before the battle ends.
-		var events: Array[LevelUpEvent] = player_mon.gain_exp(result.xp_gained)
-		if not events.is_empty():
-			# Reflect new max HP in the HUD before showing the stat screens.
-			_refresh_hp_bars(false)
-			_refresh_labels()
-			for event in events:
-				await _show_level_up_screens(event)
-				# Phase 2b: consult learnset, teach any new moves learned
-				# at this level (one at a time, in sorted order).
-				var new_moves: Array[Move] = LearnsetResolver.moves_learned_at(
-					player_mon.species, event.new_level
-				)
-				for move in new_moves:
-					if LearnsetResolver.already_knows(player_mon, move):
-						continue
-					await _try_learn_move(player_mon, move)
+		# Narrate each participant's gain. Active mon gets full level-up
+		# screens + learn-move flow; benched participants apply their
+		# level-ups silently (auto-learn, no replace prompt).
+		for idx in splits.keys():
+			var amount: int = splits[idx]
+			var p_mon: PokemonInstance = player_party[idx]
+			await _print_dialog("%s gained %d EXP!" % [p_mon.species.species_name, amount])
+			var events: Array[LevelUpEvent] = p_mon.gain_exp(amount)
+			if events.is_empty():
+				continue
+			if p_mon == player_mon:
+				# Reflect new max HP in the HUD before showing stat screens.
+				_refresh_hp_bars(false)
+				_refresh_labels()
+				for event in events:
+					await _show_level_up_screens(event)
+					var new_moves: Array[Move] = LearnsetResolver.moves_learned_at(
+						p_mon.species, event.new_level
+					)
+					for move in new_moves:
+						if LearnsetResolver.already_knows(p_mon, move):
+							continue
+						await _try_learn_move(p_mon, move)
+			else:
+				_apply_bench_levelups(p_mon, events)
+
+		# 2c.7 still assumes a single-mon enemy party, so any enemy faint
+		# ends the battle. Multi-mon trainer progression lands in 2c.8.
+		state = State.ENDED
 	else:
+		state = State.ENDED
 		result.outcome = BattleResult.Outcome.LOSE
 		await _print_dialog("You are out of usable Pokémon!")
 
