@@ -15,9 +15,6 @@ extends RefCounted
 
 var _steps: Array = []
 
-static func create() -> DialogSequence:
-	return DialogSequence.new()
-
 func say(text: String) -> DialogSequence:
 	_steps.append({"kind": "say", "text": text})
 	return self
@@ -35,13 +32,22 @@ func size() -> int:
 
 ## Run the queued steps sequentially. Awaits DialogBox.queue for say lines,
 ## Timer for waits, and invokes callables synchronously. Returns when done.
+##
+## The DialogBox autoload is looked up by node path rather than identifier
+## so this script compiles before the autoload is registered in 2d.3.
+## Say steps become no-ops if DialogBox isn't registered yet.
 func run() -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree == null:
+		return
+	var dialog_box: Node = tree.root.get_node_or_null("DialogBox")
 	for step in _steps:
 		match step["kind"]:
 			"say":
-				await DialogBox.queue([step["text"]])
+				if dialog_box != null:
+					await dialog_box.queue([step["text"]])
 			"wait":
-				await Engine.get_main_loop().create_timer(step["seconds"]).timeout
+				await tree.create_timer(step["seconds"]).timeout
 			"call":
 				var fn: Callable = step["fn"]
 				fn.call()

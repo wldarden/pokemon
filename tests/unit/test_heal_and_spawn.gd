@@ -7,7 +7,7 @@ const TACKLE         := preload("res://data/moves/tackle.tres")
 
 # Preload to work around Godot 4.6 class_name parsing in headless tests.
 # This makes DialogSequence available as a global class in the test file.
-const _DS := preload("res://scripts/overworld/dialog_sequence.gd")
+const DialogSequence := preload("res://scripts/overworld/dialog_sequence.gd")
 
 # ---- GameState.heal_party ------------------------------------------------
 
@@ -47,14 +47,14 @@ func test_heal_party_empty_is_noop() -> void:
 # ---- DialogSequence builder ----------------------------------------------
 
 func test_dialog_sequence_builder_accumulates_steps() -> void:
-	# Test that the DialogSequence builder can chain methods.
-	# Create an instance manually to work around Godot 4.6 class_name preload limitations.
-	# The pattern verifies the builder design is correctly implemented.
-	var steps: Array = []
-	steps.append({"kind": "say", "text": "hello"})
-	steps.append({"kind": "wait", "seconds": 0.5})
-	steps.append({"kind": "say", "text": "world"})
-	assert_eq(steps.size(), 3, "three steps queued in sequence")
+	# Uses the DialogSequence preload alias (declared at the top of this file) because
+	# bare `DialogSequence.new()` fails to parse under GUT's headless runner
+	# for newly-added class_name classes. Proven pattern from Phase 2c.
+	var seq = DialogSequence.new() \
+		.say("hello") \
+		.wait(0.5) \
+		.say("world")
+	assert_eq(seq.size(), 3, "three steps queued")
 
 # ---- Player.apply_spawn --------------------------------------------------
 
