@@ -678,6 +678,17 @@ func _apply_bench_levelups(mon: PokemonInstance, events: Array[LevelUpEvent]) ->
 
 # ---- Faint / outcome -------------------------------------------------------
 
+## Handles either side's faint. Flow:
+##   - Enemy faint → XP distribution → team-wipe check → either emit WIN or
+##     send next enemy and `_enter_action_menu(); return`.
+##   - Player faint → participant cleanup → team-wipe check → either emit
+##     LOSE or `_open_party_screen_forced(); return`.
+##
+## `result` is allocated up front so both branches can fill it in, but the
+## bottom `battle_ended.emit(result)` is ONLY reached on enemy team-wipe —
+## every other path either emits from inside its branch or returns before
+## the emit. A future refactor could push result construction inside the
+## emit branches to make this less subtle.
 func _handle_faint(mon: PokemonInstance) -> void:
 	await _print_dialog("%s fainted!" % mon.species.species_name)
 

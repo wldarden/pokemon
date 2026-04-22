@@ -1,11 +1,10 @@
 extends Node2D
 ## A stationary NPC trainer that watches a sight cone for the player.
 ##
-## Emits `trainer_triggered(trainer_id, opponent_species, level, moves)` when
-## the player steps into the sight cone and the trainer hasn't been defeated.
-## The overworld scene listens and launches a trainer battle.
-
-signal trainer_triggered(trainer_id: String, opponent_species: Species, level: int, moves: Array)
+## The overworld bootstrap polls each trainer's `sees_player()` after every
+## player step and calls `_spot_trainer(t)` directly when the sightline is
+## broken. No signal — the poll-based path is simpler and matches the rest
+## of the overworld's state handling.
 
 # Must be unique across the game (used as the key in GameState.defeated_trainers).
 @export var trainer_id: String = "trainer_001"
