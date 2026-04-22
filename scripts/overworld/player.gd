@@ -86,6 +86,19 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_P:
 		party_screen_requested.emit()
 		get_viewport().set_input_as_handled()
+		return
+	if event.is_action_pressed("ui_accept"):
+		_try_interact()
+
+## Phase 2d: press A facing a "blockers"-group node that has an
+## on_interact() method → call it. Used by NPCs (nurse, etc.).
+func _try_interact() -> void:
+	var target_cell: Vector2i = cell + DIR_VEC[facing]
+	for b in get_tree().get_nodes_in_group("blockers"):
+		if "cell" in b and b.cell == target_cell and b.has_method("on_interact"):
+			b.on_interact()
+			get_viewport().set_input_as_handled()
+			return
 
 func _read_input() -> int:
 	# ui_up / ui_down / ui_left / ui_right are arrow-keys + d-pad by default in Godot 4.
@@ -119,6 +132,14 @@ func _on_move_complete(target_cell: Vector2i) -> void:
 	cell = target_cell
 	is_moving = false
 	moved.emit(cell)
+
+	# Phase 2d: doors group members with `cell` and `on_enter(player)`
+	# trigger a scene transition when stepped on.
+	for door in get_tree().get_nodes_in_group("doors"):
+		if "cell" in door and door.cell == cell and door.has_method("on_enter"):
+			door.on_enter(self)
+			return
+
 	# If the key is released, _process() will snap to idle on the next frame;
 	# if still held, it will immediately schedule the next step.
 
