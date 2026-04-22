@@ -51,6 +51,7 @@ func apply_spawn(spawn: Dictionary) -> void:
 	position = _cell_to_world(cell)
 
 func _ready() -> void:
+	add_to_group("player")
 	cell = start_cell
 	position = _cell_to_world(cell)
 

@@ -1,0 +1,33 @@
+[gd_scene load_steps=3 format=3 uid="uid://bphase2d002"]
+
+[ext_resource type="Script" path="res://scripts/ui/dialog_box.gd" id="1_script"]
+
+[sub_resource type="StyleBoxFlat" id="sb_panel"]
+bg_color = Color(0.972, 0.972, 0.910, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.180, 0.180, 0.313, 1)
+
+[node name="DialogBox" type="CanvasLayer"]
+layer = 50
+script = ExtResource("1_script")
+
+[node name="Panel" type="Panel" parent="."]
+offset_left = 0.0
+offset_top = 120.0
+offset_right = 240.0
+offset_bottom = 160.0
+theme_override_styles/panel = SubResource("sb_panel")
+mouse_filter = 2
+
+[node name="Label" type="Label" parent="Panel"]
+offset_left = 6.0
+offset_top = 4.0
+offset_right = 234.0
+offset_bottom = 36.0
+theme_override_colors/font_color = Color(0.180, 0.180, 0.313, 1)
+theme_override_font_sizes/font_size = 8
+autowrap_mode = 2
+text = ""
