@@ -19,6 +19,7 @@ config/icon="res://icon.svg"
 [autoload]
 
 GameState="*res://scripts/globals/game_state.gd"
+SceneFade="*res://scenes/ui/SceneFade.tscn"
 
 [gui]
 
