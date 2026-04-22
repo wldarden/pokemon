@@ -198,3 +198,70 @@ text = ""
 offset_right = 4.0
 offset_bottom = 4.0
 modulate = Color(1, 0.871, 0.125, 1)
+
+[node name="Submenu" type="Panel" parent="Root"]
+offset_left = 148.0
+offset_top = 86.0
+offset_right = 232.0
+offset_bottom = 130.0
+visible = false
+
+[node name="SummaryLabel" type="Label" parent="Root/Submenu"]
+offset_left = 4.0
+offset_top = 2.0
+offset_right = 80.0
+offset_bottom = 14.0
+text = "SUMMARY"
+
+[node name="SwitchLabel" type="Label" parent="Root/Submenu"]
+offset_left = 4.0
+offset_top = 16.0
+offset_right = 80.0
+offset_bottom = 28.0
+text = "SWITCH"
+
+[node name="CancelLabel" type="Label" parent="Root/Submenu"]
+offset_left = 4.0
+offset_top = 30.0
+offset_right = 80.0
+offset_bottom = 42.0
+text = "CANCEL"
+
+[node name="SubmenuCursor" type="Panel" parent="Root/Submenu"]
+offset_right = 4.0
+offset_bottom = 4.0
+modulate = Color(1, 0.871, 0.125, 1)
+
+[node name="Summary" type="Panel" parent="Root"]
+offset_right = 240.0
+offset_bottom = 160.0
+visible = false
+
+[node name="SummaryBG" type="ColorRect" parent="Root/Summary"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_right = 240.0
+offset_bottom = 160.0
+color = Color(0.972, 0.972, 0.910, 1)
+
+[node name="Title" type="Label" parent="Root/Summary"]
+offset_left = 8.0
+offset_top = 6.0
+offset_right = 232.0
+offset_bottom = 20.0
+text = ""
+
+[node name="Body" type="Label" parent="Root/Summary"]
+offset_left = 8.0
+offset_top = 24.0
+offset_right = 232.0
+offset_bottom = 146.0
+autowrap_mode = 2
+text = ""
+
+[node name="SummaryHint" type="Label" parent="Root/Summary"]
+offset_left = 8.0
+offset_top = 146.0
+offset_right = 232.0
+offset_bottom = 158.0
+text = "B or A: back"

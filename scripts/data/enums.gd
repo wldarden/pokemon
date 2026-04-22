@@ -25,6 +25,30 @@ enum Type {
 	COUNT     = 18,
 }
 
+## Returns the lowercased name of a Type value (e.g., 3 -> "grass").
+## NONE → "none". Out-of-range → "???".
+static func type_name(t: int) -> String:
+	match t:
+		Type.NORMAL:   return "normal"
+		Type.FIRE:     return "fire"
+		Type.WATER:    return "water"
+		Type.GRASS:    return "grass"
+		Type.ELECTRIC: return "electric"
+		Type.ICE:      return "ice"
+		Type.FIGHTING: return "fighting"
+		Type.POISON:   return "poison"
+		Type.GROUND:   return "ground"
+		Type.FLYING:   return "flying"
+		Type.PSYCHIC:  return "psychic"
+		Type.BUG:      return "bug"
+		Type.ROCK:     return "rock"
+		Type.GHOST:    return "ghost"
+		Type.DRAGON:   return "dragon"
+		Type.DARK:     return "dark"
+		Type.STEEL:    return "steel"
+		Type.NONE:     return "none"
+	return "???"
+
 enum Category {
 	PHYSICAL = 0,
 	SPECIAL  = 1,
