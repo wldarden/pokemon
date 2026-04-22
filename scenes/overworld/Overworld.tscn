@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3 uid="uid://bpkmnow002"]
+[gd_scene load_steps=15 format=3 uid="uid://bpkmnow002"]
 
 [ext_resource type="Script" path="res://scripts/overworld/overworld_bootstrap.gd" id="1_bootstrap"]
 [ext_resource type="TileSet" path="res://assets/tilesets/frlg/frlg_outdoor.tres" id="2_tileset"]
@@ -9,6 +9,18 @@
 [ext_resource type="Resource" path="res://data/species/007_squirtle.tres" id="7_squi"]
 [ext_resource type="PackedScene" path="res://scenes/overworld/Trainer.tscn" id="8_trainer"]
 [ext_resource type="Resource" path="res://data/trainers/route_0_trainer_1.tres" id="9_team1"]
+[ext_resource type="Texture2D" path="res://assets/buildings/frlg/pc_exterior.png" id="10_pc_ext"]
+[ext_resource type="PackedScene" path="res://scenes/overworld/PokemonCenter.tscn" id="11_pc_scene"]
+[ext_resource type="Script" path="res://scripts/overworld/door.gd" id="12_door"]
+
+[sub_resource type="RectangleShape2D" id="pc_wall_top"]
+size = Vector2(80, 48)
+
+[sub_resource type="RectangleShape2D" id="pc_wall_bl"]
+size = Vector2(32, 16)
+
+[sub_resource type="RectangleShape2D" id="pc_wall_br"]
+size = Vector2(32, 16)
 
 [node name="Overworld" type="Node2D"]
 script = ExtResource("1_bootstrap")
@@ -45,3 +57,31 @@ sight_tiles = 3
 facing = 1
 team = ExtResource("9_team1")
 cell = Vector2i(4, 10)
+
+[node name="PokemonCenter" type="Node2D" parent="."]
+position = Vector2(64, 32)
+
+[node name="Sprite" type="Sprite2D" parent="PokemonCenter"]
+texture = ExtResource("10_pc_ext")
+centered = false
+
+[node name="Walls" type="StaticBody2D" parent="PokemonCenter"]
+
+[node name="Top" type="CollisionShape2D" parent="PokemonCenter/Walls"]
+position = Vector2(40, 24)
+shape = SubResource("pc_wall_top")
+
+[node name="BottomLeft" type="CollisionShape2D" parent="PokemonCenter/Walls"]
+position = Vector2(16, 56)
+shape = SubResource("pc_wall_bl")
+
+[node name="BottomRight" type="CollisionShape2D" parent="PokemonCenter/Walls"]
+position = Vector2(64, 56)
+shape = SubResource("pc_wall_br")
+
+[node name="Door" type="Area2D" parent="PokemonCenter"]
+script = ExtResource("12_door")
+cell = Vector2i(6, 5)
+target_scene = ExtResource("11_pc_scene")
+target_cell = Vector2i(7, 8)
+target_facing = 1

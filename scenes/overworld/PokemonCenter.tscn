@@ -34,3 +34,5 @@ script = ExtResource("4_nurse")
 script = ExtResource("5_door")
 cell = Vector2i(7, 8)
 target_scene = ExtResource("6_overworld")
+target_cell = Vector2i(6, 6)
+target_facing = 0
