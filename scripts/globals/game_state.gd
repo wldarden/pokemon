@@ -36,20 +36,3 @@ func heal_party() -> void:
 		for slot in mon.moves:
 			slot.pp_current = slot.move.pp
 
-func _ready() -> void:
-	if player_party.is_empty():
-		_debug_seed_party()
-
-# TODO(2d): remove when starter selection + catching land.
-func _debug_seed_party() -> void:
-	var BULBASAUR   := preload("res://data/species/001_bulbasaur.tres")
-	var CHARMANDER  := preload("res://data/species/004_charmander.tres")
-	var SQUIRTLE    := preload("res://data/species/007_squirtle.tres")
-
-	var bulb := PokemonInstance.create(BULBASAUR, 7, DefaultMovesets.for_species(1))
-	var char_mon := PokemonInstance.create(CHARMANDER, 5, DefaultMovesets.for_species(4))
-	var squirt := PokemonInstance.create(SQUIRTLE, 5, DefaultMovesets.for_species(7))
-	# Seed one member at mid-HP so low-HP UI can be eyeballed immediately.
-	char_mon.current_hp = max(1, char_mon.max_hp() / 2)
-
-	player_party = [bulb, char_mon, squirt]

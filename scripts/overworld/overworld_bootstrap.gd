@@ -129,6 +129,14 @@ const RING_PLACEMENTS := [
 @onready var trainers_root: Node = $Trainers
 
 const BATTLE_SCENE := preload("res://scenes/battle/Battle.tscn")
+
+# Phase 2d — first-boot starter pick resources.
+const STARTER_SELECT := preload("res://scenes/ui/StarterSelect.tscn")
+const STARTER_SPECIES := {
+	1: preload("res://data/species/001_bulbasaur.tres"),
+	4: preload("res://data/species/004_charmander.tres"),
+	7: preload("res://data/species/007_squirtle.tres"),
+}
 const TYPE_CHART := preload("res://data/type_chart.tres")
 const PARTY_SCREEN := preload("res://scenes/ui/PartyScreen.tscn")
 const PartyScreenScript := preload("res://scripts/ui/party_screen.gd")
@@ -141,6 +149,16 @@ var _spot_in_progress: bool = false
 # ---- Lifecycle ------------------------------------------------------------
 
 func _ready() -> void:
+	# Phase 2d: resume from a scene transition OR run first-boot starter pick.
+	# next_spawn takes precedence so mid-game scene swaps never trigger the
+	# starter pick.
+	if not GameState.next_spawn.is_empty():
+		$Player.apply_spawn(GameState.next_spawn)
+		GameState.next_spawn = {}
+		await SceneFade.fade_in()
+	elif GameState.player_party.is_empty():
+		await _run_starter_pick()
+
 	_paint_ground()
 	_paint_objects()
 	encounter_zone.wild_encounter_triggered.connect(_on_wild_encounter)
@@ -148,9 +166,13 @@ func _ready() -> void:
 	$Player.party_screen_requested.connect(_on_party_screen_requested)
 
 func _unhandled_input(event: InputEvent) -> void:
-	# Debug heal key (Phase 2b). Remove when Pokémon Center lands.
+	# Debug heal key (Phase 2b). Superseded by the Pokémon Center in 2d —
+	# kept as a dev shortcut. Suppressed while a dialog/modal is open so
+	# it doesn't fire under the player's input lock.
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode == KEY_H:
+			if DialogBox.is_open() or $Player.input_locked:
+				return
 			_debug_heal_party()
 
 func _debug_heal_party() -> void:
@@ -160,6 +182,20 @@ func _debug_heal_party() -> void:
 		for slot in mon.moves:
 			slot.pp_current = slot.move.pp
 	print("[DEBUG] Party healed.")
+
+## Phase 2d first-boot flow: spawn the starter-pick modal, await the
+## player's choice, build the chosen Pokémon and append it to the party,
+## then clean up. Blocks the normal overworld boot until a pick happens.
+func _run_starter_pick() -> void:
+	var picker: CanvasLayer = STARTER_SELECT.instantiate()
+	add_child(picker)
+	$Player.input_locked = true
+	var dex: int = await picker.starter_chosen
+	picker.queue_free()
+	var species: Species = STARTER_SPECIES[dex]
+	var moves: Array[Move] = DefaultMovesets.for_species(dex)
+	GameState.player_party.append(PokemonInstance.create(species, 5, moves))
+	$Player.input_locked = false
 
 # ---- Ground layer --------------------------------------------------------
 
