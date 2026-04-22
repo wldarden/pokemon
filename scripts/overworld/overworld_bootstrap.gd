@@ -325,13 +325,16 @@ func _spot_trainer(trainer: Node) -> void:
 func _start_trainer_battle(trainer: Node) -> void:
 	if _current_battle != null:
 		return
-	var opponent: PokemonInstance = trainer.build_opponent()
+	var enemy_team: Array[PokemonInstance] = trainer.build_team()
+	if enemy_team.is_empty():
+		push_error("Trainer %s has no team — aborting battle start." % trainer.trainer_id)
+		return
 	_current_battle = BATTLE_SCENE.instantiate()
 	add_child(_current_battle)
 	_current_battle.battle_ended.connect(func(result): _on_trainer_battle_ended(result, trainer))
 	var ctx := BattleContext.with_chart(TYPE_CHART)
 	ctx.is_trainer = true
-	_current_battle.start(GameState.player_party, [opponent], ctx)
+	_current_battle.start(GameState.player_party, enemy_team, ctx)
 
 func _on_trainer_battle_ended(result: BattleResult, trainer: Node) -> void:
 	if result.outcome == BattleResult.Outcome.WIN:

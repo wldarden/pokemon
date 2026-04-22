@@ -541,6 +541,21 @@ func _switch_to(idx: int, is_forced: bool) -> void:
 	_refresh_move_menu()
 	await _print_dialog("Go, %s!" % player_mon.species.species_name)
 
+## Opens PartyScreen in FORCED_SWITCH mode after the active mon faints.
+## Cancel is disabled at the PartyScreen level; only slot_chosen fires.
+func _open_party_screen_forced() -> void:
+	state = State.FAINT_SWITCH
+	_party_screen = PARTY_SCREEN.instantiate()
+	add_child(_party_screen)
+	_party_screen.slot_chosen.connect(_on_party_slot_chosen_forced)
+	_party_screen.open(player_party, player_active_idx, PartyScreenScript.Mode.FORCED_SWITCH)
+
+func _on_party_slot_chosen_forced(idx: int) -> void:
+	_close_party_screen()
+	await _switch_to(idx, true)
+	# Forced switch doesn't spend the turn — back to action menu.
+	_enter_action_menu()
+
 # ---- RESOLVING state -------------------------------------------------------
 
 func _submit_player_move(idx: int) -> void:
@@ -704,13 +719,41 @@ func _handle_faint(mon: PokemonInstance) -> void:
 			else:
 				_apply_bench_levelups(p_mon, events)
 
-		# 2c.7 still assumes a single-mon enemy party, so any enemy faint
-		# ends the battle. Multi-mon trainer progression lands in 2c.8.
-		state = State.ENDED
+		# Multi-mon trainer progression: on faint, check for a surviving
+		# enemy. Wipe → emit WIN (with trainer-defeat narration first).
+		# Otherwise send the next non-fainted enemy and return to the
+		# action menu without ending the battle.
+		if PartyHelpers.all_fainted(enemy_party):
+			if context.is_trainer:
+				await _print_dialog("The trainer was defeated!")
+			state = State.ENDED
+		else:
+			enemy_active_idx = PartyHelpers.first_non_fainted(enemy_party)
+			enemy_mon = enemy_party[enemy_active_idx]
+			# Reset participant set for the new opponent — only the currently-
+			# active player mon has been on the field against them.
+			current_opponent_participants = [player_active_idx]
+			await _print_dialog("The trainer sent out %s!" % enemy_mon.species.species_name)
+			_apply_sprites()
+			_refresh_hp_bars(true)
+			_refresh_labels()
+			_enter_action_menu()
+			return
 	else:
-		state = State.ENDED
-		result.outcome = BattleResult.Outcome.LOSE
-		await _print_dialog("You are out of usable Pokémon!")
+		# Player-side faint. Remove the fainter from the participant set —
+		# FR/LG rule: fainted mons don't earn XP from a subsequent KO.
+		current_opponent_participants.erase(player_active_idx)
+		if PartyHelpers.all_fainted(player_party):
+			state = State.ENDED
+			result.outcome = BattleResult.Outcome.LOSE
+			await _print_dialog("You are out of usable Pokémon!")
+			battle_ended.emit(result)
+			return
+		# Still have teammates — force the player to pick a replacement.
+		# Forced switch does NOT spend a turn; control returns to the
+		# action menu after the switch narration.
+		await _open_party_screen_forced()
+		return
 
 	battle_ended.emit(result)
 

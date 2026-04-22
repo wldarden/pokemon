@@ -16,9 +16,9 @@ signal trainer_triggered(trainer_id: String, opponent_species: Species, level: i
 # Facing direction — values come from Direction.DOWN/UP/LEFT/RIGHT.
 @export_enum("down:0", "up:1", "left:2", "right:3") var facing: int = 0
 
-# The single Pokémon this trainer sends out (Phase 1: teams of 1).
-@export var opponent_species: Species
-@export_range(1, 100) var opponent_level: int = 5
+# Ordered team the trainer brings into battle (Phase 2c: up to 6). Assign
+# an inline sub-resource or a .tres via the inspector.
+@export var team: TrainerTeam
 
 # Tile the trainer stands on. Set this so the overworld controller and the
 # sightline check agree on the trainer's grid position. (16-px tiles.)
@@ -83,8 +83,11 @@ func play_alert() -> void:
 func mark_defeated() -> void:
 	GameState.defeated_trainers[trainer_id] = true
 
-## Build the Pokémon this trainer sends out. Called by the overworld after
-## the player enters sightline.
-func build_opponent() -> PokemonInstance:
-	var moves: Array[Move] = DefaultMovesets.for_species(opponent_species.dex_number)
-	return PokemonInstance.create(opponent_species, opponent_level, moves)
+## Build the full team this trainer brings into battle. Called by the
+## overworld after the player enters sightline. Returns [] if the team
+## is null or empty (push_error already alerts).
+func build_team() -> Array[PokemonInstance]:
+	if team == null or team.entries.is_empty():
+		push_error("Trainer %s has no team configured." % trainer_id)
+		return []
+	return team.build_instances()

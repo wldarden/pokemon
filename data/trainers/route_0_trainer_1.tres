@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="TrainerTeam" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/trainer_team.gd" id="1_script"]
+[ext_resource type="Resource" path="res://data/species/004_charmander.tres" id="2_char"]
+[ext_resource type="Resource" path="res://data/species/001_bulbasaur.tres" id="3_bulb"]
+[ext_resource type="Resource" path="res://data/species/007_squirtle.tres" id="4_squi"]
+
+[resource]
+script = ExtResource("1_script")
+entries = Array[Dictionary]([{
+"species": ExtResource("2_char"),
+"level": 5
+}, {
+"species": ExtResource("3_bulb"),
+"level": 5
+}, {
+"species": ExtResource("4_squi"),
+"level": 5
+}])
