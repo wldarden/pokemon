@@ -36,6 +36,20 @@ var input_locked: bool = false
 # Looked up from the parent Overworld scene; holds the tiles we can't walk through.
 var objects_layer: TileMapLayer
 
+## Phase 2d — place the player at a specific cell + facing without a tween.
+## Called by scenes at _ready() when consuming GameState.next_spawn.
+##
+## `spawn` dict keys:
+##   cell: Vector2i (required)
+##   facing: int    (optional; defaults to current facing)
+func apply_spawn(spawn: Dictionary) -> void:
+	if not spawn.has("cell"):
+		return
+	cell = spawn["cell"]
+	if spawn.has("facing"):
+		facing = int(spawn["facing"])
+	position = _cell_to_world(cell)
+
 func _ready() -> void:
 	cell = start_cell
 	position = _cell_to_world(cell)
