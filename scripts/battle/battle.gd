@@ -516,7 +516,7 @@ func _on_party_slot_chosen_voluntary(idx: int) -> void:
 	# Switch spent the turn — enemy attacks. Single-mon enemy party is
 	# assumed in 2c.7; multi-mon trainer flow lands in 2c.8.
 	var enemy_move: Move = _choose_enemy_move()
-	_resolve_enemy_only_turn(enemy_move)
+	await _resolve_enemy_only_turn(enemy_move)
 
 func _on_party_cancelled_voluntary() -> void:
 	_close_party_screen()
@@ -673,10 +673,15 @@ func _handle_faint(mon: PokemonInstance) -> void:
 		result.xp_gained = total_xp
 		var splits: Dictionary = _compute_participant_xp_split(total_xp)
 
-		# Narrate each participant's gain. Active mon gets full level-up
-		# screens + learn-move flow; benched participants apply their
-		# level-ups silently (auto-learn, no replace prompt).
-		for idx in splits.keys():
+		# Narrate each participant's gain in party-slot order (FR/LG
+		# convention) rather than dict-insertion order (switch-in order).
+		# Invisible today with ≤2 participants but will matter in 2c.8
+		# when multi-mon enemy teams allow 3+ switch-ins.
+		var sorted_ids := splits.keys()
+		sorted_ids.sort()
+		# Active mon gets full level-up screens + learn-move flow; benched
+		# participants apply their level-ups silently (auto-learn, no prompt).
+		for idx in sorted_ids:
 			var amount: int = splits[idx]
 			var p_mon: PokemonInstance = player_party[idx]
 			await _print_dialog("%s gained %d EXP!" % [p_mon.species.species_name, amount])
