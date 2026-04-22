@@ -1,0 +1,36 @@
+[gd_scene load_steps=8 format=3 uid="uid://bphase2d004"]
+
+[ext_resource type="Script" path="res://scripts/overworld/pokemon_center.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://scenes/overworld/Player.tscn" id="2_player"]
+[ext_resource type="Texture2D" path="res://assets/maps/frlg/pc_interior.png" id="3_bg"]
+[ext_resource type="Script" path="res://scripts/overworld/nurse.gd" id="4_nurse"]
+[ext_resource type="Script" path="res://scripts/overworld/door.gd" id="5_door"]
+[ext_resource type="PackedScene" path="res://scenes/overworld/Overworld.tscn" id="6_overworld"]
+
+[sub_resource type="RectangleShape2D" id="shape_counter"]
+size = Vector2(144, 16)
+
+[node name="PokemonCenter" type="Node2D"]
+script = ExtResource("1_script")
+
+[node name="Background" type="TextureRect" parent="."]
+texture = ExtResource("3_bg")
+offset_right = 240.0
+offset_bottom = 160.0
+
+[node name="Walls" type="StaticBody2D" parent="."]
+
+[node name="CounterShape" type="CollisionShape2D" parent="Walls"]
+position = Vector2(120, 56)
+shape = SubResource("shape_counter")
+
+[node name="Player" parent="." instance=ExtResource("2_player")]
+start_cell = Vector2i(7, 8)
+
+[node name="Nurse" type="Area2D" parent="."]
+script = ExtResource("4_nurse")
+
+[node name="ExitMat" type="Area2D" parent="."]
+script = ExtResource("5_door")
+cell = Vector2i(7, 8)
+target_scene = ExtResource("6_overworld")
