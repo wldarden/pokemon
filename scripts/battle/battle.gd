@@ -445,11 +445,10 @@ func _handle_action_menu_input() -> void:
 func _update_action_cursor() -> void:
 	cursor.visible = true
 	var btn: Panel = action_buttons[selected_action_idx]
-	# ActionMenu is sibling of MoveMenu; cursor lives under MoveMenu. Translate
-	# the button's position into ActionMenu-local + ActionMenu's offset, then
-	# back into MoveMenu-local for the cursor. Since ActionMenu and MoveMenu
-	# share the same top-left (140,112), translation cancels out — just reuse
-	# the button position directly.
+	# Cursor is a child of MoveMenu but we're pointing it at an ActionMenu
+	# button. Works because ActionMenu shares MoveMenu's top-left (140,112),
+	# so button.position is valid in both parent spaces. If either menu moves,
+	# this needs a reparent or coordinate translation.
 	cursor.position = btn.position + Vector2(-2, -2)
 	cursor.size = btn.size + Vector2(4, 4)
 
@@ -458,10 +457,13 @@ func _submit_action(idx: int) -> void:
 		ACTION_FIGHT:
 			_enter_move_menu()
 		ACTION_POKEMON:
-			# Wired in 2c.7 — non-destructive stub for now.
-			_set_dialog("(POKéMON menu — wired in 2c.7)")
+			# Wired in 2c.7 — stub narrates and returns to the action menu so
+			# the player isn't stranded on a frozen "What will X do?" prompt.
+			await _print_dialog("(POKéMON menu — wired in 2c.7)")
+			_enter_action_menu()
 		ACTION_BAG:
-			_set_dialog("The BAG is empty…")
+			await _print_dialog("The BAG is empty…")
+			_enter_action_menu()
 		ACTION_RUN:
 			_try_run()
 
