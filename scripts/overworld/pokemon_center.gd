@@ -9,6 +9,8 @@ extends Node2D
 ##   * ExitMat: Door in "doors" group at (7, 8), returns to Overworld.
 
 func _ready() -> void:
+	$Player.input_locked = true
 	$Player.apply_spawn(GameState.next_spawn)
 	GameState.next_spawn = {}
 	await SceneFade.fade_in()
+	$Player.input_locked = false

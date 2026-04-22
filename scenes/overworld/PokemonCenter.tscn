@@ -29,6 +29,7 @@ start_cell = Vector2i(7, 8)
 
 [node name="Nurse" type="Area2D" parent="."]
 script = ExtResource("4_nurse")
+cell = Vector2i(7, 3)
 
 [node name="ExitMat" type="Area2D" parent="."]
 script = ExtResource("5_door")

@@ -4,9 +4,9 @@ extends Node
 
 const PARTY_MAX := 6
 
-# Player party. Typed as Array[PokemonInstance] in Phase 2c; seeded with 3
-# placeholder Pokémon on boot (see _debug_seed_party). Starter selection +
-# catching + Pokémon Center are separate later sub-phases.
+# Player party. Typed as Array[PokemonInstance]. Populated by the first-boot
+# starter-pick modal (Phase 2d, see scripts/ui/starter_select.gd). Catching
+# lands in Phase 3+ — for now the array only grows via the starter pick.
 var player_party: Array[PokemonInstance] = []
 
 # Where the player stood on the overworld when a battle started.

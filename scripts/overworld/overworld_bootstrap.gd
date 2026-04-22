@@ -153,9 +153,11 @@ func _ready() -> void:
 	# next_spawn takes precedence so mid-game scene swaps never trigger the
 	# starter pick.
 	if not GameState.next_spawn.is_empty():
+		$Player.input_locked = true
 		$Player.apply_spawn(GameState.next_spawn)
 		GameState.next_spawn = {}
 		await SceneFade.fade_in()
+		$Player.input_locked = false
 	elif GameState.player_party.is_empty():
 		await _run_starter_pick()
 

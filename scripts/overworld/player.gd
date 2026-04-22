@@ -118,6 +118,15 @@ func _is_blocked(target_cell: Vector2i) -> bool:
 	for b in get_tree().get_nodes_in_group("blockers"):
 		if "cell" in b and b.cell == target_cell:
 			return true
+	# Phase 2d: StaticBody2D + CollisionShape2D (PC walls, counter). One
+	# physics point query at the target cell's center catches any solid body.
+	var space := get_world_2d().direct_space_state
+	var query := PhysicsPointQueryParameters2D.new()
+	query.position = _cell_to_world(target_cell)
+	query.collide_with_bodies = true
+	var hits: Array = space.intersect_point(query, 1)
+	if not hits.is_empty():
+		return true
 	return false
 
 func _tween_to(target_cell: Vector2i) -> void:

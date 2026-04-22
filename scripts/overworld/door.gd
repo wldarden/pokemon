@@ -24,10 +24,14 @@ func _ready() -> void:
 
 ## Called by Player._on_move_complete when the player steps onto `cell`.
 ## Fades the screen, sets GameState.next_spawn, and triggers the swap.
-func on_enter(_player: Node) -> void:
+## Locks player input during the fade so a held direction doesn't tween the
+## player one extra tile under the black rect.
+func on_enter(player: Node) -> void:
 	if target_scene == null:
 		push_error("Door at %s has no target_scene." % cell)
 		return
+	if player != null and "input_locked" in player:
+		player.input_locked = true
 	GameState.next_spawn = {
 		"scene": target_scene,
 		"cell": target_cell,

@@ -3,7 +3,10 @@ extends Area2D
 ## Runs the canonical heal sequence: dialog, pause + heal, follow-up dialog.
 
 ## Cell position on the interior map. Queried by Player._try_interact.
-@export var cell: Vector2i = Vector2i(7, 2)
+## Set by PokemonCenter.tscn to (7, 3) — the counter tile directly in front
+## of the nurse — so the player talks to her from one row below. The
+## default here is a harmless fallback.
+@export var cell: Vector2i = Vector2i(7, 3)
 
 func _ready() -> void:
 	add_to_group("blockers")
