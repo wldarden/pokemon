@@ -36,7 +36,10 @@ OUT_MAPS_DIR = REPO / "assets" / "maps" / "frlg"
 
 # ---- Crop rectangles ------------------------------------------------------
 PC_EXTERIOR_RECT = (496, 244, 592, 314)   # Buildings.png
-PC_INTERIOR_RECT = (0,   16,  240, 176)   # Pokemon Center _ Mart.png
+# Initial crop was (0, 16, 240, 176) — had 8 extra source pixels on the left
+# and 8 on the top while missing 8 on the right. Shifted the window right + down
+# by 8 to re-center on the actual interior art.
+PC_INTERIOR_RECT = (8,   24,  248, 184)   # Pokemon Center _ Mart.png → 240×160
 
 # Future-phase rectangles (not extracted now):
 #   MART_EXTERIOR_RECT = (416, 244, 496, 314)   # blue-roofed MART
