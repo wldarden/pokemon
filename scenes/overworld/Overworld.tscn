@@ -1,4 +1,4 @@
-[gd_scene load_steps=15 format=3 uid="uid://bpkmnow002"]
+[gd_scene load_steps=14 format=3 uid="uid://bpkmnow002"]
 
 [ext_resource type="Script" path="res://scripts/overworld/overworld_bootstrap.gd" id="1_bootstrap"]
 [ext_resource type="TileSet" path="res://assets/tilesets/frlg/frlg_outdoor.tres" id="2_tileset"]
@@ -10,7 +10,6 @@
 [ext_resource type="PackedScene" path="res://scenes/overworld/Trainer.tscn" id="8_trainer"]
 [ext_resource type="Resource" path="res://data/trainers/route_0_trainer_1.tres" id="9_team1"]
 [ext_resource type="Texture2D" path="res://assets/buildings/frlg/pc_exterior.png" id="10_pc_ext"]
-[ext_resource type="PackedScene" path="res://scenes/overworld/PokemonCenter.tscn" id="11_pc_scene"]
 [ext_resource type="Script" path="res://scripts/overworld/door.gd" id="12_door"]
 
 [sub_resource type="RectangleShape2D" id="pc_wall_top"]
@@ -82,6 +81,6 @@ shape = SubResource("pc_wall_br")
 [node name="Door" type="Area2D" parent="PokemonCenter"]
 script = ExtResource("12_door")
 cell = Vector2i(6, 5)
-target_scene = ExtResource("11_pc_scene")
+target_scene_path = "res://scenes/overworld/PokemonCenter.tscn"
 target_cell = Vector2i(7, 8)
 target_facing = 1

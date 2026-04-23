@@ -10,8 +10,12 @@ extends Area2D
 ## Where this door lives on its own map. Compared with player.cell.
 @export var cell: Vector2i = Vector2i.ZERO
 
-## PackedScene to swap into when the player enters this cell.
-@export var target_scene: PackedScene
+## Path to the .tscn to swap into when the player enters this cell.
+## String-path (not PackedScene) avoids the editor's circular-dependency
+## refusal when Scene A's door targets Scene B and Scene B's door targets
+## back to Scene A. Godot's change_scene_to_file resolves the path at
+## transition time, by which point neither scene is mid-parse.
+@export_file("*.tscn") var target_scene_path: String = ""
 
 ## Where the player should appear in the target scene.
 @export var target_cell: Vector2i = Vector2i.ZERO
@@ -27,15 +31,15 @@ func _ready() -> void:
 ## Locks player input during the fade so a held direction doesn't tween the
 ## player one extra tile under the black rect.
 func on_enter(player: Node) -> void:
-	if target_scene == null:
-		push_error("Door at %s has no target_scene." % cell)
+	if target_scene_path.is_empty():
+		push_error("Door at %s has no target_scene_path." % cell)
 		return
 	if player != null and "input_locked" in player:
 		player.input_locked = true
 	GameState.next_spawn = {
-		"scene": target_scene,
+		"scene_path": target_scene_path,
 		"cell": target_cell,
 		"facing": target_facing,
 	}
 	await SceneFade.fade_out()
-	get_tree().change_scene_to_packed(target_scene)
+	get_tree().change_scene_to_file(target_scene_path)

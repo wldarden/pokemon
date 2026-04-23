@@ -1,11 +1,10 @@
-[gd_scene load_steps=8 format=3 uid="uid://bphase2d004"]
+[gd_scene load_steps=7 format=3 uid="uid://bphase2d004"]
 
 [ext_resource type="Script" path="res://scripts/overworld/pokemon_center.gd" id="1_script"]
 [ext_resource type="PackedScene" path="res://scenes/overworld/Player.tscn" id="2_player"]
 [ext_resource type="Texture2D" path="res://assets/maps/frlg/pc_interior.png" id="3_bg"]
 [ext_resource type="Script" path="res://scripts/overworld/nurse.gd" id="4_nurse"]
 [ext_resource type="Script" path="res://scripts/overworld/door.gd" id="5_door"]
-[ext_resource type="PackedScene" path="res://scenes/overworld/Overworld.tscn" id="6_overworld"]
 [ext_resource type="TileSet" path="res://assets/tilesets/frlg/frlg_outdoor.tres" id="7_tileset"]
 
 [node name="PokemonCenter" type="Node2D"]
@@ -34,6 +33,6 @@ cell = Vector2i(7, 3)
 [node name="ExitMat" type="Area2D" parent="."]
 script = ExtResource("5_door")
 cell = Vector2i(7, 8)
-target_scene = ExtResource("6_overworld")
+target_scene_path = "res://scenes/overworld/Overworld.tscn"
 target_cell = Vector2i(6, 6)
 target_facing = 0
