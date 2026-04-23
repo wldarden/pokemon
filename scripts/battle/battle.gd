@@ -32,6 +32,7 @@ signal battle_ended(result: BattleResult)
 	$MoveMenu/Move3/Label, $MoveMenu/Move4/Label,
 ]
 @onready var cursor: Panel = $MoveMenu/Cursor
+@onready var action_cursor: Panel = $ActionMenu/Cursor
 
 # Phase 2c: PartyScreen is instantiated on demand when POKéMON is picked
 # or the active mon faints. Uses a preload for the script so we can type
@@ -467,14 +468,12 @@ func _handle_action_menu_input() -> void:
 		_update_action_cursor()
 
 func _update_action_cursor() -> void:
-	cursor.visible = true
+	# Use the ActionMenu-owned cursor so it stays visible when MoveMenu is
+	# hidden (MoveMenu's child cursor goes invisible along with its parent).
+	action_cursor.visible = true
 	var btn: Panel = action_buttons[selected_action_idx]
-	# Cursor is a child of MoveMenu but we're pointing it at an ActionMenu
-	# button. Works because ActionMenu shares MoveMenu's top-left (140,112),
-	# so button.position is valid in both parent spaces. If either menu moves,
-	# this needs a reparent or coordinate translation.
-	cursor.position = btn.position + Vector2(-2, -2)
-	cursor.size = btn.size + Vector2(4, 4)
+	action_cursor.position = btn.position + Vector2(-2, -2)
+	action_cursor.size = btn.size + Vector2(4, 4)
 
 func _submit_action(idx: int) -> void:
 	match idx:
